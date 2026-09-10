@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/brand/banner.svg" alt="pi-workbench" width="860">
+</p>
+
 # pi-workbench — an opinionated, all-in-one customization for the Pi coding agent
 
 A portable, advanced working setup for the [Pi coding agent](https://github.com/earendil-works/pi-coding-agent):
