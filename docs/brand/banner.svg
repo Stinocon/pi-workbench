@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 260" role="img"
+     aria-label="pi-workbench — an opinionated, all-in-one customization for the Pi coding agent">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111c2e"/>
+      <stop offset="1" stop-color="#0a1322"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#a9b8cb"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f59e0b" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="bordo">
+      <rect width="1200" height="260" rx="20"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1200" height="260" rx="20" fill="url(#bg)"/>
+
+  <g clip-path="url(#bordo)">
+    <ellipse cx="1060" cy="30" rx="430" ry="270" fill="url(#glow)"/>
+    <!-- faint terminal prompt motif on the right edge -->
+    <g fill="none" stroke="#f8fafc" stroke-opacity="0.05" stroke-width="3"
+       stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="880,52 912,80 880,108"/>
+      <line x1="936" y1="108" x2="988" y2="108"/>
+    </g>
+  </g>
+
+  <!-- mascot tile: a terminal window with the pi glyph and a cursor -->
+  <g transform="translate(70 76)">
+    <rect width="108" height="108" rx="28" fill="url(#tile)"/>
+    <!-- window controls -->
+    <g transform="translate(22 20)">
+      <circle cx="6" cy="6" r="3.6" fill="#1c1917" fill-opacity="0.55"/>
+      <circle cx="20" cy="6" r="3.6" fill="#1c1917" fill-opacity="0.55"/>
+      <circle cx="34" cy="6" r="3.6" fill="#1c1917" fill-opacity="0.55"/>
+    </g>
+    <text x="54" y="82" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+          font-size="52" font-weight="700" fill="#1c1917">π</text>
+    <rect x="72" y="88" width="15" height="6" rx="2" fill="#1c1917"/>
+  </g>
+
+  <text x="228" y="112" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="62" font-weight="700" fill="url(#word)" letter-spacing="-0.5">pi-workbench</text>
+  <text x="231" y="152" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="24" font-weight="400" fill="#8fa3b8">An opinionated, all-in-one customization for the Pi coding agent</text>
+
+  <g transform="translate(231 174)">
+    <rect width="470" height="32" rx="16" fill="#1a2638" stroke="#33455e"/>
+    <circle cx="19" cy="16" r="4.5" fill="#f59e0b"/>
+    <text x="34" y="21" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="15" fill="#aebccd">cloud-first workers · 19 skills · deterministic gates</text>
+  </g>
+</svg>
