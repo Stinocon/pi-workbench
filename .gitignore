@@ -10,6 +10,7 @@ workers.json
 sessions/
 trust.json
 .delegate-audit.log
+.pi/memory/
 
 # Derived caches / dependencies (regenerated or index local content)
 rag/
