@@ -1,0 +1,28 @@
+# Never commit secrets, sessions, caches, or machine-specific state.
+
+# Secrets — never versioned
+auth.json
+mcp.json
+models-store.json
+workers.json
+
+# Private / machine-specific state
+sessions/
+trust.json
+.delegate-audit.log
+
+# Derived caches / dependencies (regenerated or index local content)
+rag/
+npm/
+venvs/
+bin/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

@@ -1,0 +1,156 @@
+# Language Layer — Catalogo errori grammaticali comuni (italiano)
+# Ogni voce: wrong/right/rule_ref/severity/exceptions/alternatives.
+# Fonte primaria: grammatica-italiana.dossier.net — Errori grammaticali più comuni.
+
+errors:
+  - id: err-abbino
+    category: coniugazione
+    wrong: "che loro abbino"
+    right: "che loro abbiano"
+    rule_ref: null
+    severity: high
+    exceptions: "forma dialettale (alcune varietà)"
+    source: "grammatica-italiana.dossier.net — Errori (voce 'abbino')"
+
+  - id: err-affatto
+    category: semantica
+    wrong: "mi è affatto simpatico"   # senza negazione
+    right: "non mi è affatto simpatico"
+    note: "'Affatto' = del tutto; in senso negativo solo con negazione."
+    severity: medium
+    exceptions: []
+    source: "grammatica-italiana.dossier.net — Errori (voce 'affatto')"
+
+  - id: err-apposto
+    category: ortografia
+    wrong: "Ora è tutto apposto."
+    right: "Ora è tutto a posto."
+    note: "'Apposto' = participio di 'apporre'."
+    severity: high
+    exceptions: []
+    check: it-apposto
+    source: "grammatica-italiana.dossier.net — Errori (voce 'apposto')"
+
+  - id: err-centra
+    category: ortografia
+    wrong: "Non centra nulla."
+    right: "Non c'entra nulla."
+    note: "'Centra' = verbo 'centrare' (colpire al centro)."
+    severity: high
+    exceptions: []
+    check: it-centra
+    source: "grammatica-italiana.dossier.net — Errori (voce 'cèntra')"
+
+  - id: err-ci-per-gli
+    category: pronomi
+    wrong: "Ci dico (per 'gli dico')"
+    right: "Gli dico / Le dico / Dico loro"
+    rule_ref: it-pronomi-ci
+    severity: medium
+    exceptions: "uso familiare di 'ci' = con lui/da lui"
+    check: it-pronome-ci
+    source: "grammatica-italiana.dossier.net — Errori (voce 'ci')"
+
+  - id: err-colla
+    category: preposizioni
+    wrong: "colla / cogli / colle"
+    right: "con la / con gli / con le"
+    rule_ref: it-preposizioni-con
+    severity: medium
+    exceptions: []
+    check: it-preposizione-colla
+    source: "grammatica-italiana.dossier.net — Errori (voce 'collo')"
+
+  - id: err-congiuntivo-condizionale
+    category: modi-verbali
+    wrong: "se egli avesse progredito, chi sa che non fosse arrivato"
+    right: "se egli avesse progredito, chi sa che non sarebbe arrivato"
+    rule_ref: it-congiuntivo-vs-condizionale
+    severity: high
+    exceptions: []
+    source: "grammatica-italiana.dossier.net — Errori (voce 'congiuntivo')"
+
+  - id: err-contradittorio
+    category: ortografia
+    wrong: "contradittorio"
+    right: "contraddittorio"
+    note: "Prefisso 'contra' raddoppia la consonante iniziale."
+    severity: medium
+    exceptions: []
+    source: "grammatica-italiana.dossier.net — Errori (voce 'contraddittorio')"
+
+  - id: err-di-cui
+    category: pronomi
+    wrong: "il di cui padre"
+    right: "il cui padre"
+    rule_ref: it-pronomi-cui
+    severity: medium
+    exceptions: []
+    source: "grammatica-italiana.dossier.net — Errori (voce 'cosa/cui')"
+
+  - id: err-per-cui-neutro
+    category: pronomi
+    wrong: "Siete stati buoni, per cui vi offrirò un gelato."
+    right: "Siete stati buoni, e perciò vi offrirò un gelato."
+    rule_ref: it-pronomi-cui
+    severity: medium
+    exceptions: []
+    source: "grammatica-italiana.dossier.net — Errori (voce 'cosa/cui')"
+
+  - id: err-dietro
+    category: preposizioni
+    wrong: "dietro sua richiesta"
+    right: "a sua richiesta"
+    rule_ref: it-preposizioni-dietro
+    severity: low
+    exceptions: []
+    source: "grammatica-italiana.dossier.net — Errori (voce 'dietro')"
+
+  - id: err-diversivo
+    category: lessico
+    wrong: "un notevole diversivo fra le nostre valutazioni"
+    right: "un notevole divario fra le nostre valutazioni"
+    rule_ref: null
+    severity: medium
+    exceptions: []
+    source: "grammatica-italiana.dossier.net — Errori (voce 'diversivo')"
+
+  - id: err-affittasi
+    category: concordanza
+    wrong: "Affittasi case per l'estate."
+    right: "Affittansi case per l'estate."
+    rule_ref: it-concordanza-soggetto-verbo
+    severity: medium
+    exceptions: []
+    check: it-concordanza-affittasi
+    source: "grammatica-italiana.dossier.net — Errori (voce 'affittare')"
+
+  - id: err-un-altro
+    category: concordanza
+    wrong: "un'altro caso"
+    right: "un altro caso"
+    rule_ref: it-concordanza-genere-numero
+    severity: high
+    exceptions: []
+    check: it-concordanza-articolo
+    source: "grammatica-italiana.dossier.net — Apostrofo"
+
+  - id: err-qual-e
+    category: ortografia
+    wrong: "qual'è"
+    right: "qual è"
+    note: "'Qual' non si apostrofa: è apocope, non elisione."
+    severity: high
+    exceptions: []
+    check: it-qual-e
+    source: "grammatica-italiana.dossier.net — Elisione/Troncamento"
+
+  - id: err-a-me-mi
+    category: pleonasmo
+    wrong: "a me mi piace"
+    right: "a me piace / mi piace"
+    note: "Pleonasmo pronominale."
+    severity: medium
+    exceptions: "registro colloquiale, enfatico"
+    check: it-pleonasmo
+    source: "grammatica-italiana.dossier.net — Pleonasmo"

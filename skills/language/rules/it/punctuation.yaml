@@ -1,0 +1,94 @@
+# Language Layer — Punteggiatura (italiano)
+# Fonte primaria: grammatica-italiana.dossier.net — Guida all'uso della punteggiatura.
+# `check` = regola meccanizzata in tools/check.py; assente = solo guida al modello.
+
+rules:
+  - id: it-punt-soggetto-verbo
+    name: "Mai virgola tra soggetto e verbo"
+    rule: "Non separare il soggetto dal suo verbo con una virgola (salvo uso creativo/letterario consapevole)."
+    examples:
+      - "Luca ha comprato una nuova macchina."
+    wrong:
+      - "Luca, ha comprato una nuova macchina."
+    register: all
+    check: it-virgola-soggetto-verbo
+    source: "grammatica-italiana.dossier.net — La virgola"
+
+  - id: it-punt-virgola-enumerazioni
+    name: "Virgola nelle enumerazioni"
+    rule: "Nelle enumerazioni la virgola separa gli elementi; l'ultimo si unisce con 'e' (senza virgola)."
+    examples:
+      - "Il panorama era bello, suggestivo e nuovo."
+    wrong:
+      - "Il panorama era bello, suggestivo, e nuovo."   # virgola di Oxford: non nella norma italiana
+    register: all
+    source: "grammatica-italiana.dossier.net — La virgola"
+
+  - id: it-punt-incisi
+    name: "Virgola per incisi, vocativi, apposizioni"
+    rule: "Incisi, vocativi e apposizioni vanno tra due virgole (o aperto/chiuso)."
+    examples:
+      - "Antonio, cioè il mio amico d'infanzia, ha trovato un lavoro."
+    wrong:
+      - "Antonio cioè il mio amico d'infanzia ha trovato un lavoro."
+    register: all
+    source: "grammatica-italiana.dossier.net — La virgola"
+
+  - id: it-punt-relativa
+    name: "Virgola e proposizione relativa"
+    rule: "Relativa determinativa (necessaria al senso) → senza virgola; relativa appositiva/incidentale → tra virgole. Il senso cambia."
+    examples:
+      - "Il treno che arriva a mezzogiorno da Roma."         # determinativa
+      - "Il treno, che arriva a mezzogiorno, era affollato."  # appositiva
+    wrong: []
+    register: all
+    source: "grammatica-italiana.dossier.net — La virgola"
+
+  - id: it-punt-punto-virgola
+    name: "Punto e virgola"
+    rule: "Il punto e virgola segna una pausa tra virgola e punto: cambio di soggetto/tema, enumerazioni complesse, contrapposizioni, prima di connettivi forti (inoltre, quindi, a meno che)."
+    examples:
+      - "Era addolorato, ma fiero."   # virgola basta per un solo elemento
+    wrong: []
+    register: all
+    source: "grammatica-italiana.dossier.net — Il punto e virgola"
+
+  - id: it-punt-due-punti
+    name: "Due punti"
+    rule: "I due punti introducono discorso diretto, citazione, enumerazione o una spiegazione/amplificazione. Non abusarne."
+    examples:
+      - "Non risposi alla sua domanda: era stupida."
+    wrong: []
+    register: all
+    source: "grammatica-italiana.dossier.net — I due punti"
+
+  - id: it-punt-maiuscola
+    name: "Maiuscole"
+    rule: "Maiuscola a inizio periodo, dopo punto fermo/interrogativo/esclamativo e nei nomi propri. Minuscola dopo i due punti quando il testo prosegue la frase."
+    examples: []
+    wrong: []
+    register: all
+    source: "grammatica-italiana.dossier.net — Maiuscola"
+
+  - id: it-punt-apostrofo
+    name: "Apostrofo (elisione vs troncamento)"
+    rule: "Apostrofo solo per elisione di vocale finale, mai per troncamento. 'un' davanti a maschile con vocale è troncamento (un uomo, senza apostrofo); davanti a femminile è elisione (un'anima)."
+    examples:
+      - "un uomo, un animale"       # troncamento, niente apostrofo
+      - "un'anima, un'aquila"       # elisione, apostrofo
+    wrong:
+      - "un'uomo, un'animale"
+    register: all
+    check: it-apostrofo-un
+    source: "grammatica-italiana.dossier.net — Apostrofo"
+
+  - id: it-punt-accento
+    name: "Accenti"
+    rule: "'È' (verbo) con accento grave; 'po'' con apostrofo (troncamento di 'poco'); mai 'pò'. 'Perché', 'affinché', 'giacché' con accento acuto finale."
+    examples:
+      - "È vero." / "un po' di tempo" / "perché"
+    wrong:
+      - "E' vero." / "un pò di tempo" / "perchè"
+    register: all
+    check: it-accenti
+    source: "grammatica-italiana.dossier.net — Accento"

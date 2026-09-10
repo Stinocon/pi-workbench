@@ -1,0 +1,92 @@
+# Language Layer — Catalogo errori tipici degli LLM (italiano)
+# Costruzioni grammaticalmente corrette ma innaturali. `check` = regola meccanizzata.
+# Fonte: catalogo interno (distillato, non copiato da terzi).
+
+errors:
+  - id: llm-err-importante-notare
+    category: formula-stereotipata
+    wrong: "È importante notare che il sistema è vulnerabile."
+    right: "Il sistema è vulnerabile."
+    rule_ref: llm-formule-stereotipate
+    severity: low
+    exceptions: []
+    check: llm-formula-stereotipata
+    source: "catalogo interno errori LLM"
+
+  - id: llm-err-conclusione-possiamo-dire
+    category: formula-stereotipata
+    wrong: "In conclusione, possiamo dire che..."
+    right: "In sintesi: ..."   # o direttamente la conclusione
+    rule_ref: llm-formule-stereotipate
+    severity: low
+    exceptions: []
+    check: llm-formula-stereotipata
+    source: "catalogo interno errori LLM"
+
+  - id: llm-err-effettuazione
+    category: nominalizzazione
+    wrong: "Si procede all'effettuazione della verifica."
+    right: "Si procede alla verifica. / Si verifica."
+    rule_ref: llm-nominalizzazioni
+    severity: low
+    exceptions: []
+    check: llm-nominalizzazione
+    source: "catalogo interno errori LLM"
+
+  - id: llm-err-realizzazione
+    category: nominalizzazione
+    wrong: "La realizzazione del progetto richiede tempo."
+    right: "Realizzare il progetto richiede tempo."
+    rule_ref: llm-nominalizzazioni
+    severity: low
+    exceptions: []
+    check: llm-nominalizzazione
+    source: "catalogo interno errori LLM"
+
+  - id: llm-err-rende-piu
+    category: calco-inglese
+    wrong: "Questo rende il sistema più sicuro."
+    right: "Questo aumenta la sicurezza del sistema. / Rende il sistema più sicuro (neutro, accettabile)."
+    rule_ref: llm-calco-rendere
+    severity: low
+    exceptions: "registro neutro: il calco è tollerato"
+    check: llm-calco-rendere
+    source: "catalogo interno errori LLM"
+
+  - id: llm-err-inoltre-inoltre
+    category: connettivo-artificiale
+    wrong: "Inoltre, il sistema è veloce. Inoltre, è sicuro."
+    right: "Il sistema è veloce e sicuro."
+    rule_ref: llm-connettivi-artificiali
+    severity: low
+    exceptions: []
+    check: llm-connettivo-ripetuto
+    source: "catalogo interno errori LLM"
+
+  - id: llm-err-ripetizione-parola
+    category: ripetizione
+    wrong: "Il sistema è un sistema robusto."
+    right: "Il sistema è robusto."
+    rule_ref: llm-ripetizioni
+    severity: low
+    exceptions: []
+    check: llm-ripetizione
+    source: "catalogo interno errori LLM"
+
+  - id: llm-err-registro-misto
+    category: registro-incoerente
+    wrong: "La vulnerabilità è stata rilevata, e quindi il sistema fa schifo."
+    right: "La vulnerabilità è stata rilevata: il sistema non è adeguatamente protetto."
+    rule_ref: llm-registro-incoerente
+    severity: medium
+    exceptions: []
+    source: "catalogo interno errori LLM"
+
+  - id: llm-err-finta-precisione
+    category: finta-precisione
+    wrong: "Il 47% degli utenti è esposto."   # numero senza fonte
+    right: "Una parte degli utenti è esposta (dato non disponibile senza telemetria)."
+    rule_ref: llm-precisione-finta
+    severity: high
+    exceptions: []
+    source: "regola di onestà (AGENTS.md §2)"

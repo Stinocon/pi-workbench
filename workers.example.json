@@ -1,0 +1,17 @@
+{
+  "draft": {
+    "provider": "<your-draft-provider>",
+    "model": "<your-draft-model>",
+    "name": "<human-readable name, e.g. your draft model>",
+    "contextWindow": 256000,
+    "maxTokens": 4096,
+    "costIn": 0.3,
+    "costOut": 0.9
+  },
+  "local": {
+    "provider": "<your-local-provider>",
+    "model": "<your-local-model>",
+    "name": "<human-readable name, e.g. Local worker>"
+  },
+  "cloudProvider": "<your-cloud-provider-id>"
+}

@@ -1,0 +1,196 @@
+# Language benchmark — seed test set (italiano)
+# 25 casi che coprono le classi di errore prioritarie. Ogni caso: id, register, prompt,
+# error_class (cosa misura), gold (forma corretta attesa), notes.
+# Uso: (1) generazione — il modello produce il testo richiesto da `prompt`; (2) detection —
+# il testo può contenere l'errore e `gold` è la correzione.
+
+cases:
+  # --- Concordanza soggetto/verbo ---
+  - id: conc-sogg-verbo-1
+    register: formale
+    prompt: "Descrivi che le case si affittano per l'estate (annuncio)."
+    error_class: concordanza-soggetto-verbo
+    gold: "Affittansi case per l'estate."
+    notes: "verbo plurale con soggetto plurale"
+
+  - id: conc-sogg-verbo-2
+    register: professionale
+    prompt: "Scrivi che una parte dei dati non risulta disponibile."
+    error_class: concordanza-soggetto-verbo
+    gold: "Una parte dei dati non risulta disponibile."
+    notes: "accordo col nucleo del soggetto"
+
+  # --- Concordanza genere/numero ---
+  - id: conc-genere-1
+    register: neutro
+    prompt: "Riformula: 'un'altro caso è stato rilevato'."
+    error_class: concordanza-genere-numero
+    gold: "Un altro caso è stato rilevato."
+    notes: "'un' maschile: troncamento, senza apostrofo"
+
+  - id: conc-genere-2
+    register: neutro
+    prompt: "Scrivi 'un'azione rapida è stata intrapresa' senza errori."
+    error_class: concordanza-genere-numero
+    gold: "Un'azione rapida è stata intrapresa."
+    notes: "'un' femminile: elisione, con apostrofo"
+
+  # --- Consecutio temporum ---
+  - id: consecutio-1
+    register: neutro
+    prompt: "Riformula correttamente: 'ha detto che era già uscito prima che arrivava'."
+    error_class: consecutio-temporum
+    gold: "Ha detto che era già uscito prima che arrivassi."
+    notes: "anteriorità nel passato → congiuntivo imperfetto/trapassato"
+
+  - id: consecutio-2
+    register: formale
+    prompt: "Scrivi 'vorrei che tu sai la verità' in forma corretta."
+    error_class: consecutio-temporum
+    gold: "Vorrei che tu sapessi la verità."
+    notes: "reggente condizionale → dipendente congiuntivo imperfetto"
+
+  # --- Congiuntivo ---
+  - id: congiuntivo-1
+    register: professionale
+    prompt: "Riformula correttamente: 'mi pare che le cose si mettono al meglio'."
+    error_class: congiuntivo
+    gold: "Mi pare che le cose si mettano al meglio."
+    notes: "dopo verbo di opinione → congiuntivo"
+
+  - id: congiuntivo-2
+    register: formale
+    prompt: "Scrivi che si ritiene opportuno che il sistema venga aggiornato."
+    error_class: congiuntivo
+    gold: "Si ritiene opportuno che il sistema venga aggiornato."
+    notes: "dipendente retta da giudizio → congiuntivo"
+
+  # --- Periodo ipotetico ---
+  - id: ipotetico-1
+    register: neutro
+    prompt: "Riformula correttamente: 'se lo sapevo, venivo'."
+    error_class: periodo-ipotetico
+    gold: "Se l'avessi saputo, sarei venuto."
+    notes: "irrealtà nel passato → trapassato congiuntivo + condizionale passato"
+
+  - id: ipotetico-2
+    register: neutro
+    prompt: "Riformula correttamente: 'se avrei tempo, verrei'."
+    error_class: periodo-ipotetico
+    gold: "Se avessi tempo, verrei."
+    notes: "possibilità → congiuntivo in protasi, mai condizionale"
+
+  # --- Punteggiatura ---
+  - id: punt-1
+    register: formale
+    prompt: "Scrivi 'Luca, ha comprato una nuova macchina' senza la virgola errata."
+    error_class: punteggiatura
+    gold: "Luca ha comprato una nuova macchina."
+    notes: "mai virgola tra soggetto e verbo"
+
+  - id: punt-2
+    register: formale
+    prompt: "Separa correttamente due frasi con soggetto diverso in un solo periodo."
+    error_class: punteggiatura
+    gold: "Il sistema è stato aggiornato; i servizi sono stati riavviati."
+    notes: "punto e virgola al cambio di soggetto"
+
+  # --- Apostrofi/accenti ---
+  - id: ortografia-1
+    register: neutro
+    prompt: "Riformula correttamente: 'qual'è il problema'."
+    error_class: apostrofo-accento
+    gold: "Qual è il problema."
+    notes: "'qual' è apocope, non elisione"
+
+  - id: ortografia-2
+    register: neutro
+    prompt: "Riformula correttamente: 'un pò di tempo'."
+    error_class: apostrofo-accento
+    gold: "Un po' di tempo."
+    notes: "'po'' con apostrofo, mai 'pò'"
+
+  # --- Preposizioni ---
+  - id: preposizioni-1
+    register: formale
+    prompt: "Riformula correttamente: 'dietro sua richiesta, abbiamo inviato il documento'."
+    error_class: preposizioni
+    gold: "A sua richiesta, abbiamo inviato il documento."
+    notes: "'dietro' non significa 'a causa di/contro'"
+
+  - id: preposizioni-2
+    register: neutro
+    prompt: "Riformula correttamente: 'esco colla macchina'."
+    error_class: preposizioni
+    gold: "Esco con la macchina."
+    notes: "'con' si fonde solo con il/i (col, coi)"
+
+  # --- Pronomi ---
+  - id: pronomi-1
+    register: neutro
+    prompt: "Riformula correttamente: 'ci dico la verità' (per 'a lui')."
+    error_class: pronomi
+    gold: "Gli dico la verità."
+    notes: "'ci' non significa 'a lui'"
+
+  - id: pronomi-2
+    register: formale
+    prompt: "Riformula correttamente: 'il di cui padre lavora qui'."
+    error_class: pronomi
+    gold: "Il cui padre lavora qui."
+    notes: "'cui' già articolato non vuole 'di'"
+
+  # --- Calchi dall'inglese ---
+  - id: calco-1
+    register: professionale
+    prompt: "Scrivi che una patch aumenta la sicurezza, evitando il calco 'rende più sicuro'."
+    error_class: calco-inglese
+    gold: "La patch aumenta la sicurezza del sistema."
+    notes: "evitare 'rende X più Y' meccanico"
+
+  - id: calco-2
+    register: professionale
+    prompt: "Scrivi che si sta per iniziare, evitando il francesismo 'si va ad incominciare'."
+    error_class: calco-francesismo
+    gold: "Si sta per cominciare."
+    notes: "'stare per' al posto di 'andare a'"
+
+  # --- Nominalizzazioni ---
+  - id: nominalizzazione-1
+    register: professionale
+    prompt: "Riformula evitando la nominalizzazione: 'si procede all'effettuazione della verifica'."
+    error_class: nominalizzazione
+    gold: "Si procede alla verifica."
+    notes: "verbo vivo al posto della nominalizzazione"
+
+  # --- Ripetizioni ---
+  - id: ripetizione-1
+    register: professionale
+    prompt: "Riformula evitando la ripetizione: 'il sistema è un sistema robusto'."
+    error_class: ripetizione
+    gold: "Il sistema è robusto."
+    notes: "evitare ripetizione a distanza ravvicinata"
+
+  # --- Formule stereotipate ---
+  - id: formula-1
+    register: formale
+    prompt: "Scrivi che il sistema è vulnerabile, senza 'è importante notare che'."
+    error_class: formula-stereotipata
+    gold: "Il sistema è vulnerabile."
+    notes: "andare dritto al punto"
+
+  # --- Registro coerente ---
+  - id: registro-1
+    register: formale
+    prompt: "Riformula mantenendo un registro formale uniforme: 'la vulnerabilità è stata rilevata, e quindi il sistema fa schifo'."
+    error_class: registro-incoerente
+    gold: "La vulnerabilità è stata rilevata: il sistema non è adeguatamente protetto."
+    notes: "registro uniforme, niente salti colloquiali"
+
+  # --- Costruzioni innaturali ---
+  - id: naturalezza-1
+    register: professionale
+    prompt: "Scrivi una frase naturale (senza costruzioni artificiali) per dire che il dato non è verificabile."
+    error_class: naturalezza
+    gold: "Il dato non è disponibile, non è stato verificato con esito negativo."
+    notes: "distinzione verificato-negativo vs non-disponibile"

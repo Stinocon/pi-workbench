@@ -1,0 +1,72 @@
+# Language Layer — Errori tipici degli LLM (italiano)
+# Costruzioni grammaticalmente corrette ma innaturali: calchi dall'inglese, nominalizzazioni,
+# ripetizioni, connettivi artificiali, formule stereotipate, registro incoerente.
+# `check` = regola meccanizzata in tools/check.py; assente = solo guida al modello.
+
+tells:
+  - id: llm-calco-rendere
+    name: "Calco dall'inglese 'make ... more'"
+    pattern: "'rendere X più Y' usato meccanicamente per ogni miglioramento"
+    example: "Questo rende il sistema più efficiente."
+    prefer: "Questo migliora l'efficienza del sistema. / Rende il sistema più efficiente (accettabile in registro neutro)."
+    note: "Il calco non è sempre errato, ma la variazione è più naturale."
+    register: [professionale, formale]
+    check: llm-calco-rendere
+    source: "catalogo interno errori LLM (distillato, non copiato)"
+
+  - id: llm-nominalizzazioni
+    name: "Abuso di nominalizzazioni"
+    pattern: "'l'effettuazione di', 'la realizzazione di', 'la verifica di' + nome al posto del verbo vivo"
+    example: "Si procede all'effettuazione della verifica."
+    prefer: "Si verifica."
+    note: "Il verbo è quasi sempre più naturale della nominalizzazione."
+    register: all
+    check: llm-nominalizzazione
+    source: "catalogo interno errori LLM"
+
+  - id: llm-formule-stereotipate
+    name: "Formule stereotipate di apertura/chiusura"
+    pattern: "'È importante notare che', 'In conclusione possiamo dire', 'Questo documento si propone di', 'In un mondo in continua evoluzione'"
+    example: "È importante notare che il sistema è vulnerabile."
+    prefer: "Il sistema è vulnerabile."   # vai dritto al punto
+    register: all
+    check: llm-formula-stereotipata
+    source: "catalogo interno errori LLM"
+
+  - id: llm-connettivi-artificiali
+    name: "Connettivi usati in modo artificiale"
+    pattern: "catene di 'Inoltre' ripetuti, 'D'altro canto' a inizio di ogni paragrafo, 'Tuttavia' dove non c'è vera opposizione"
+    example: "Inoltre, il sistema è veloce. Inoltre, è sicuro. Inoltre, è economico."
+    prefer: "Il sistema è veloce, sicuro ed economico."   # coordina, non accumulare connettivi
+    register: all
+    check: llm-connettivo-ripetuto
+    source: "catalogo interno errori LLM"
+
+  - id: llm-frasi-lunghe
+    name: "Frasi eccessivamente lunghe"
+    pattern: "periodi con 3+ subordinate annidate che potrebbero essere frasi separate"
+    prefer: "Spezzare in periodi brevi; alternare frasi brevi e lunghe."
+    register: all
+    source: "catalogo interno errori LLM"
+
+  - id: llm-ripetizioni
+    name: "Ripetizioni lessicali"
+    pattern: "stessa parola ripetuta a distanza ravvicinata; stesso verbo generico ('fare', 'essere') accumulato"
+    prefer: "Variare il lessico senza cadere nell'aulico."
+    register: all
+    check: llm-ripetizione
+    source: "catalogo interno errori LLM"
+
+  - id: llm-registro-incoerente
+    name: "Registro incoerente"
+    pattern: "lessico formale in un contesto colloquiale, o colloquiale in un testo formale, nello stesso testo"
+    prefer: "Scegliere un registro e mantenerlo per tutto il testo."
+    register: all
+    source: "catalogo interno errori LLM"
+
+  - id: llm-precisione-finta
+    name: "Precisione numerica finta"
+    pattern: "numeri esatti inventati ('Il 47% degli utenti...') dove non c'è una fonte"
+    prefer: "Dichiarare il dato solo se ancorato a fonte; altrimenti lasciare il gap."
+    register: [professionale, tecnico]
+    source: "regola di onestà (AGENTS.md §2) — mai numeri inventati"

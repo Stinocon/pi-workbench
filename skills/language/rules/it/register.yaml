@@ -1,0 +1,81 @@
+# Language Layer — Registro e lessico (italiano)
+# Distingue la CORRETTEZZA dal REGISTRO: una frase colloquiale può essere perfettamente corretta.
+# Il registro è una scelta di lessico/sintassi, non un giudizio di correttezza.
+
+registers: [colloquiale, neutro, professionale, tecnico, formale, molto-formale, letterario]
+
+axes:
+  correctness:
+    note: "Indipendente dal registro. 'Ci sentiamo dopo' è corretto quanto 'La contatteremo in seguito'."
+  register:
+    note: "Scelta di lessico e sintassi. Non si giudica 'errato' un testo perché colloquiale."
+  formality:
+    note: "Formale ≠ corretto. Non correggere un registro colloquiale 'rendendolo formale' se non richiesto."
+
+# Politica sui termini tecnici inglesi (regola di registro, non solo di stile)
+english_terms_policy:
+  id: it-registro-inglese
+  rule: "La terminologia tecnica inglese resta in inglese canonico; si contestualizza in italiano quando non ovvia, ma non si traduce."
+  keep_english:
+    - remote code execution        # non «esecuzione di codice in remoto»
+    - authentication bypass        # non «aggiramento dell'autenticazione»
+    - end-of-life                  # non «fine supporto» / «fuori supporto»
+    - out-of-band                  # non «fuori di banda»
+    - lateral movement
+    - denial of service
+    - patch management
+    - hardening
+    - security posture
+    - worst case
+    - logon type
+    - cross-site scripting
+  register: [tecnico, professionale]
+  source: "convenzione del dominio security (CVE, report vendor)"
+
+# Lessico: scelte da preferire/evitare (con provenienza)
+lexicon:
+  - id: it-lex-aulico
+    wrong: "inferita"
+    right: "dedotta"
+    note: "Evitare il lessico aulico quando esiste la parola piana."
+    register: [professionale, formale]
+    source: "convenzione di scrittura (regola di registro)"
+
+  - id: it-lex-riveste
+    wrong: "riveste un'importanza"
+    right: "ha un'importanza"
+    note: "Forma piana al posto della perifrasi aulica."
+    register: [professionale, formale]
+    source: "convenzione di scrittura (regola di registro)"
+
+  - id: it-lex-compromissione
+    wrong: "compromesso (per indicare una violazione di sicurezza)"
+    right: "compromissione"
+    note: "'Compromesso' = accordo/patteggiamento. La violazione di sicurezza è 'compromissione'. Mai confonderli nei report tecnici."
+    register: [tecnico, professionale]
+    check: it-lessico-compromesso
+    source: "correzione d'uso registrata 2026-08-27 (fonte unica qui)"
+
+  - id: it-lex-diversivo
+    wrong: "diversivo (per 'divario/differenza')"
+    right: "divario / differenza / diversità"
+    note: "'Diversivo' = ciò che distoglie l'attenzione, non una differenza."
+    register: all
+    source: "grammatica-italiana.dossier.net — Errori (voce 'diversivo')"
+
+  - id: it-lex-affittare
+    wrong: "affittare (per 'prendere in affitto')"
+    right: "appigionare / locare / dare a pigione (dare); prendere in affitto (ricevere)"
+    note: "'Affittare' = dare in affitto, non prendere."
+    register: all
+    source: "grammatica-italiana.dossier.net — Errori (voce 'affittare')"
+
+# Anglicismi/francesismi da evitare quando esiste l'equivalente naturale
+borrowings:
+  - id: it-calco-andare-a
+    wrong: "andare a + infinito (per azione imminente: 'si va ad incominciare')"
+    right: "stare per + infinito: 'si sta per cominciare'"
+    note: "Francesismo da evitare."
+    register: all
+    check: it-calco-andare-a
+    source: "grammatica-italiana.dossier.net — Errori (voce 'andare')"
