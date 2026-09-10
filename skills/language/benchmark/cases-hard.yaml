@@ -1,0 +1,96 @@
+# Language benchmark — casi "hard" (generazione libera, italiano)
+# A differenza di cases.yaml (correzioni quasi deterministiche), questi casi chiedono testo
+# libero che INVITA gli errori tipici LLM (formule, calchi, nominalizzazioni, consecutio,
+# congiuntivo, registro). Servono a stressare la Language Layer dove un modello base scivola.
+# I prompt sono volutamente NEUTRI (nessun suggerimento su cosa evitare).
+
+cases:
+  - id: hard-formula-1
+    register: formale
+    prompt: "Scrivi due frasi per spiegare perché aggiornare il sistema operativo è importante."
+    error_class: formula-stereotipata
+    notes: "invita 'è importante notare che'"
+
+  - id: hard-formula-2
+    register: formale
+    prompt: "Scrivi una breve conclusione (due frasi) di un report tecnico sul patching."
+    error_class: formula-stereotipata
+    notes: "invita 'in conclusione possiamo dire'"
+
+  - id: hard-calco-1
+    register: professionale
+    prompt: "Scrivi una frase che descriva l'effetto di un aggiornamento di sicurezza sul sistema."
+    error_class: calco-inglese
+    notes: "invita 'rende il sistema più sicuro'"
+
+  - id: hard-calco-2
+    register: professionale
+    prompt: "Scrivi una frase che dica che un'attività sta per cominciare."
+    error_class: calco-francesismo
+    notes: "invita 'si va ad incominciare'"
+
+  - id: hard-nominal-1
+    register: professionale
+    prompt: "Scrivi una frase che descriva l'attività di verifica dei backup."
+    error_class: nominalizzazione
+    notes: "invita 'l'effettuazione della verifica'"
+
+  - id: hard-nominal-2
+    register: professionale
+    prompt: "Scrivi una frase che descriva la realizzazione di un progetto."
+    error_class: nominalizzazione
+    notes: "invita 'la realizzazione del progetto'"
+
+  - id: hard-connettivi-1
+    register: professionale
+    prompt: "Elenca in due frasi due vantaggi di un sistema di monitoraggio."
+    error_class: connettivo-ripetuto
+    notes: "invita 'Inoltre... Inoltre...'"
+
+  - id: hard-ipotetico-1
+    register: neutro
+    prompt: "Scrivi una frase ipotetica: se in passato avessi saputo una cosa, che cosa avresti fatto."
+    error_class: periodo-ipotetico
+    notes: "invita 'se lo sapevo' / 'se avrei saputo'"
+
+  - id: hard-ipotetico-2
+    register: neutro
+    prompt: "Scrivi una frase ipotetica su una possibilità futura (avere tempo)."
+    error_class: periodo-ipotetico
+    notes: "invita 'se avrei tempo'"
+
+  - id: hard-consecutio-1
+    register: formale
+    prompt: "Scrivi una frase in cui una persona dice che un'azione era già accaduta prima di un'altra nel passato."
+    error_class: consecutio-temporum
+    notes: "invita indicativo al posto del congiuntivo nella dipendente"
+
+  - id: hard-congiuntivo-1
+    register: professionale
+    prompt: "Scrivi una frase che esprima un'opinione usando 'mi sembra che'."
+    error_class: congiuntivo
+    notes: "invita indicativo dopo 'mi sembra che'"
+
+  - id: hard-concordanza-1
+    register: formale
+    prompt: "Scrivi una frase su una serie di problemi che è stata riscontrata durante l'analisi."
+    error_class: concordanza
+    notes: "soggetto collettivo/plurale lontano dal verbo"
+
+  - id: hard-misto-1
+    register: formale
+    prompt: "Scrivi un breve paragrafo formale (tre frasi) su un sistema che ha subito una violazione di sicurezza."
+    error_class: misto-registro
+    notes: "registro + 'compromesso' vs 'compromissione' + naturalezza"
+
+  - id: hard-misto-2
+    register: professionale
+    prompt: "Scrivi due frasi professionali su un'analisi in cui un dato non è verificabile."
+    error_class: onesta-limiti
+    notes: "invita la distinzione verificato-negativo / non-disponibile"
+
+  - id: hard-misto-3
+    register: professionale
+    prompt: "Scrivi tre frasi tecniche su una vulnerabilità e su come mitigarla."
+    error_class: misto
+    notes: "calchi + nominalizzazioni + registro in un testo continuo"

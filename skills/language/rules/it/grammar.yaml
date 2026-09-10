@@ -1,0 +1,195 @@
+# Language Layer — Regole grammaticali (italiano)
+# Fonte primaria: grammatica-italiana.dossier.net (guida di F. Carapucci; bibliografia Palazzi,
+# Serianni, Mortara Garavelli, Marchese-Sartori). Ogni voce ha `source` obbligatorio.
+# `check` = regola meccanizzata in tools/check.py (id del pattern); assente = solo guida al modello.
+
+rules:
+  # --- Periodo ipotetico ---
+  - id: it-ipotetico-realta
+    name: "Periodo ipotetico della realtà (1° tipo)"
+    rule: "Ipotesi oggettiva/reale → indicativo in protasi, indicativo o imperativo in apodosi."
+    examples:
+      - "Se vieni a trovarmi, mi fai piacere."
+      - "Se andrai al mare, ti divertirai."
+    wrong: []
+    register: all
+    source: "grammatica-italiana.dossier.net — Periodo ipotetico"
+
+  - id: it-ipotetico-possibilita
+    name: "Periodo ipotetico della possibilità (2° tipo)"
+    rule: "Ipotesi possibile → congiuntivo in protasi, condizionale in apodosi (ammesso anche indicativo in apodosi)."
+    examples:
+      - "Se venissi a trovarmi, mi faresti piacere."
+    wrong: []
+    register: all
+    source: "grammatica-italiana.dossier.net — Periodo ipotetico"
+
+  - id: it-ipotetico-irrealta-presente
+    name: "Periodo ipotetico dell'irrealtà nel presente (3° tipo)"
+    rule: "Irrealtà nel presente → congiuntivo imperfetto in protasi, condizionale presente in apodosi."
+    examples:
+      - "Se non avessi troppa fretta, aspetterei."
+    wrong:
+      - "Se non avevo troppa fretta, aspettavo."
+    register: all
+    check: it-ipotetico-irrealta
+    source: "grammatica-italiana.dossier.net — Periodo ipotetico"
+
+  - id: it-ipotetico-irrealta-passato
+    name: "Periodo ipotetico dell'irrealtà nel passato (3° tipo)"
+    rule: "Irrealtà nel passato → congiuntivo trapassato in protasi, condizionale passato in apodosi."
+    examples:
+      - "Se avesse smesso di piovere, sarei uscito."
+      - "Sarei venuto a trovarti, se avessi avuto tempo."
+    wrong:
+      - "Se lo sapevo, venivo."
+    register: all
+    check: it-ipotetico-irrealta
+    source: "grammatica-italiana.dossier.net — Periodo ipotetico"
+
+  - id: it-ipotetico-effetto-presente
+    name: "Irrealtà passata con effetto ancora presente"
+    rule: "Se l'azione della principale continua nel presente → apodosi al condizionale presente."
+    examples:
+      - "Se ti fossi dimostrato più accorto, mi sentirei ora più tranquillo."
+    wrong: []
+    register: all
+    source: "grammatica-italiana.dossier.net — Periodo ipotetico"
+
+  # --- Consecutio temporum (correlazione dei tempi) ---
+  - id: it-consecutio-anteriorita-passato
+    name: "Consecutio temporum: anteriorità nel passato"
+    rule: "Con reggente al passato, un'azione anteriore va al trapassato (non all'imperfetto)."
+    examples:
+      - "Ha detto che era già uscito prima che arrivassi."
+    wrong:
+      - "Ha detto che era già uscito prima che arrivava."
+    register: all
+    source: "grammatica-italiana.dossier.net — Correlazione dei tempi"
+
+  - id: it-consecutio-volere
+    name: "Consecutio temporum con verbi di volontà/desiderio/giudizio"
+    rule: "Reggente al condizionale (vorrei/avrei voluto) → dipendente al congiuntivo imperfetto (contemporaneità) o trapassato (anteriorità)."
+    examples:
+      - "Vorrei che tu sapessi la verità."         # contemporaneità nel presente
+      - "Vorrei che tu avessi saputo la verità."    # anteriorità rispetto al presente
+      - "Avrei voluto che tu sapessi la verità."    # contemporaneità nel passato
+      - "Avrei voluto che tu avessi saputo la verità."  # anteriorità rispetto al passato
+    wrong:
+      - "Vorrei che tu sai la verità."
+    register: all
+    source: "grammatica-italiana.dossier.net — Correlazione dei tempi"
+
+  # --- Congiuntivo / condizionale ---
+  - id: it-congiuntivo-vs-condizionale
+    name: "Congiuntivo vs condizionale"
+    rule: "Non scambiare congiuntivo e condizionale: dopo 'se' ipotetico il condizionale non va in protasi; nelle dipendenti rette da verbi di opinione/dubbio si usa il congiuntivo, non l'indicativo."
+    examples:
+      - "Se egli avesse progredito, chi sa che non sarebbe arrivato."   # condizionale, non congiuntivo
+    wrong:
+      - "Se egli avesse progredito, chi sa che non fosse arrivato."
+      - "Se sarei ricco, comprerei una casa."   # condizionale in protasi
+    register: all
+    source: "grammatica-italiana.dossier.net — Congiuntivo / Condizionale"
+
+  - id: it-congiuntivo-uso
+    name: "Uso del congiuntivo"
+    rule: "Il congiuntivo esprime azione possibile, incerta o desiderata. Si usa dopo verbi che esprimono possibilità, dubbio, volontà, timore, speranza."
+    examples:
+      - "Mi pare che le cose si mettano al meglio."
+      - "M'importa che la mamma stia in buona salute."
+    wrong:
+      - "Mi pare che le cose si mettono al meglio."
+    register: all
+    source: "grammatica-italiana.dossier.net — Congiuntivo"
+
+  # --- Concordanza ---
+  - id: it-concordanza-soggetto-verbo
+    name: "Concordanza soggetto/verbo"
+    rule: "Il verbo concorda in numero e persona col soggetto; con soggetto collettivo o plurale si usa il plurale."
+    examples:
+      - "Affittansi case per l'estate."   # soggetto plurale → verbo plurale
+    wrong:
+      - "Affittasi case per l'estate."
+    register: all
+    check: it-concordanza-affittasi
+    source: "grammatica-italiana.dossier.net — Errori grammaticali (voce 'affittare')"
+
+  - id: it-concordanza-genere-numero
+    name: "Concordanza genere/numero (articolo, aggettivo, participio)"
+    rule: "Articoli, aggettivi e participi concordano in genere e numero col nome a cui si riferiscono."
+    examples:
+      - "Un'azione rapida è stata intrapresa."
+    wrong:
+      - "Un'altro caso."     # → un altro caso
+      - "Un azione rapida."  # → un'azione
+    register: all
+    check: it-concordanza-articolo
+    source: "grammatica-italiana.dossier.net — Apostrofo / Concordanza"
+
+  # --- Preposizioni ---
+  - id: it-preposizioni-con
+    name: "Preposizioni articolate con 'con'"
+    rule: "'Con' si fonde solo con 'il'/'i' (col, coi). Con gli altri articoli si scrive separato: con lo, con la, con gli, con le."
+    examples:
+      - "Esco con la macchina."
+    wrong:
+      - "Esco colla macchina."
+    register: all
+    check: it-preposizione-colla
+    source: "grammatica-italiana.dossier.net — Errori grammaticali (voce 'collo')"
+
+  - id: it-preposizioni-dietro
+    name: "Uso di 'dietro' in locuzioni"
+    rule: "'Dietro' non significa 'a causa di/contro/in seguito a'. Usare la preposizione propria."
+    examples:
+      - "A sua richiesta, abbiamo inviato il documento."
+    wrong:
+      - "Dietro sua richiesta, abbiamo inviato il documento."
+    register: formale
+    source: "grammatica-italiana.dossier.net — Errori grammaticali (voce 'dietro')"
+
+  # --- Pronomi ---
+  - id: it-pronomi-ci
+    name: "Uso del pronome 'ci'"
+    rule: "'Ci' significa 'a noi' (o, familiare, 'con lui/da lui'). NON significa 'a lui/a lei/a loro': per quello si usano gli/le/loro."
+    examples:
+      - "Gli dico la verità."
+    wrong:
+      - "Ci dico la verità."   # per 'a lui'
+    register: all
+    check: it-pronome-ci
+    source: "grammatica-italiana.dossier.net — Errori grammaticali (voce 'ci')"
+
+  - id: it-pronomi-cui
+    name: "Uso di 'cui'"
+    rule: "'Cui' non si fa precedere da 'di' quando è già articolato ('il cui'); e non si usa in senso neutro ('per cui' riferito a un'intera frase → 'e perciò')."
+    examples:
+      - "Il cui padre lavora qui."
+      - "Siete stati buoni, e perciò vi offrirò un gelato."
+    wrong:
+      - "Il di cui padre lavora qui."
+      - "Siete stati buoni, per cui vi offrirò un gelato."
+    register: all
+    source: "grammatica-italiana.dossier.net — Errori grammaticali (voce 'cosa/cui')"
+
+  # --- Ordine delle parole ---
+  - id: it-ordine-parole
+    name: "Ordine naturale della frase"
+    rule: "Ordine soggetto-verbo-complemento come default; le inversioni sono lecite per enfasi o con inciso, non come norma."
+    examples:
+      - "È stato Luca a comprare una nuova macchina."   # evita ambiguità
+    wrong: []
+    register: all
+    source: "grammatica-italiana.dossier.net — Punteggiatura (virgola)"
+
+  # --- Gerundio / participio ---
+  - id: it-gerundio-soggetto
+    name: "Gerundio: concordanza del soggetto implicito"
+    rule: "Il soggetto implicito del gerundio deve coincidere col soggetto della reggente; altrimenti la frase è sospesa/ambigua."
+    examples:
+      - "Vedendo la televisione, non puoi studiare."   # stesso soggetto
+    wrong:
+      - "Avendo finito i compiti, la porta fu chiusa."  # soggetto implicito diverso → costruzione sospesa
+    register: all
+    source: "grammatica-italiana.dossier.net — Periodo ipotetico (gerundio implicito)"
