@@ -1,0 +1,23 @@
+{
+  "hooks": [
+    {
+      "event": "tool_call",
+      "tool": "bash",
+      "command": "echo \"$(date '+%Y-%m-%d %H:%M:%S') $1 $2\" >> ~/.pi/agent/hook-audit.log; exit 0"
+    },
+    {
+      "event": "tool_call",
+      "tool": "bash",
+      "command": "printf '%s' \"$3\" | grep -q 'rm -rf' && { echo 'blocked: destructive rm -rf pattern' >&2; exit 1; } || exit 0"
+    },
+    {
+      "event": "tool_execution_end",
+      "tool": "*",
+      "command": "echo \"$(date '+%Y-%m-%d %H:%M:%S') ended $1 $2\" >> ~/.pi/agent/hook-audit.log; exit 0"
+    },
+    {
+      "event": "session_before_compact",
+      "command": "exit 0"
+    }
+  ]
+}

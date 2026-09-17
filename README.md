@@ -36,6 +36,8 @@ settings.json                 Minimal base config (theme + no-secrets; add your 
 workers.example.json          Template for the delegate draft/local worker config (copy to
                               ~/.pi/agent/workers.json and fill in your providers/models)
 auth.json.example             API-key template (copy to ~/.pi/agent/auth.json)
+hooks.example.json            Template for declarative shell hooks (copy to ~/.pi/agent/hooks.json)
+verify.example.json           Template for deterministic gates (copy to <project>/.pi/verify.json)
 docs/FRESH_START.md           Step-by-step guide for a fresh/new machine setup
 agents/
 ├── miner-low.md              retrieval, extraction, reformatting, mechanical; thinking minimal
@@ -55,8 +57,12 @@ extensions/
 ├── web.ts                    web_fetch + web_search tools (SSRF-guarded, keyless DDG search)
 ├── docs.ts                   doc_to_markdown tool (anydoc; office/PDF → Markdown, local)
 ├── rag-autoload.ts           auto-indexes the project RAG on session start (incremental)
-└── routing.ts                deterministic routing policy + authority hierarchy (L0-L3) injected
-                              into the system prompt
+├── routing.ts                deterministic routing policy + authority hierarchy (L0-L3) injected
+│                             into the system prompt
+├── compact-tool.ts           compact tool — model-callable context compaction (schedules at turn end)
+├── tool-risk.ts              risk annotations for built-in tools + /risk + opt-in --confirm-destructive
+├── declarative-hooks.ts      declarative shell hooks (reads ~/.pi/agent/hooks.json; Codex-Hooks-style)
+└── verify-gates.ts           verify_gates tool + /verify + agent_settled gate enforcement (.pi/verify.json)
 subagent/                     The subagent tool (dispatcher): spawns isolated Pi processes per
 │                             worker; single / parallel / chain modes
 └── (index.ts + agents.ts)
@@ -353,6 +359,29 @@ outsider, operator) with blind peer review and a synthesis. For **one decision u
 uncertainty** where no verifiable answer exists. **Not the default** — not for calculations,
 facts, retrieval or mechanical work.
 
+### Harness primitives — `/verify`, `verify_gates`, `/risk`, `compact`
+
+Four local stopgap extensions that turn the "done = green deterministic gate" policy into
+mechanisms (no core change; adopt-and-discard if Pi ships native equivalents):
+
+- **`verify-gates.ts`** — deterministic task verification. A project declares its gates
+  (lint/test/build) in `.pi/verify.json`; `verify_gates` (tool) and `/verify` (command) run them
+  and treat the exit code as the only verdict — never LLM self-grading. On `agent_settled`, after
+  a run that wrote files, the gates re-run: default is a "failed" notification; with
+  `pi --verify-enforce` it feeds the failure back to the agent to fix (capped at `maxIterations`,
+  default 3). No config = inert; enforce is opt-in via flag only.
+- **`tool-risk.ts`** — risk annotations for the built-in tools (`readOnly`/`destructive`/
+  `idempotent`/`openWorld`) + `/risk` to inspect them + opt-in confirmation with
+  `pi --confirm-destructive` (off by default, interactive only).
+- **`compact-tool.ts`** — a `compact` tool so the agent can schedule context compaction at the
+  end of the current turn (between subtasks), instead of waiting for threshold compaction.
+- **`declarative-hooks.ts`** — declarative shell hooks in the spirit of Codex Hooks: reads
+  `~/.pi/agent/hooks.json` and runs each hook's command through `/bin/sh -c` on `tool_call`
+  (can block), `session_before_compact` (can cancel), and `tool_execution_start/end` +
+  `before_agent_start` (side effects). See `hooks.example.json`.
+
+Example configs ship at the repo root: `verify.example.json`, `hooks.example.json`.
+
 ---
 
 ## Global skills
@@ -428,6 +457,9 @@ From `AGENTS.md` — read it in full; the key rules:
 - **Plan mode's read-only gate is a guardrail, not a sandbox.** `edit`/`write` are disabled and
   `bash` is regex-allowlisted, but extensions run with full system permissions — a determined
   model can still write. For a real boundary, sandbox the tools instead.
+- **`hooks.json` runs arbitrary shell.** `declarative-hooks` executes each hook's `command`
+  through `/bin/sh -c` — treat `~/.pi/agent/hooks.json` like code you own and review it before
+  enabling hooks.
 
 ---
 

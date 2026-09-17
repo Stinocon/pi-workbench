@@ -1,0 +1,9 @@
+{
+  "gates": [
+    { "name": "lint", "command": "npm run lint" },
+    { "name": "test", "command": "npm test" },
+    { "name": "build", "command": "npm run build" }
+  ],
+  "timeoutMs": 120000,
+  "maxIterations": 3
+}
