@@ -182,7 +182,7 @@ al motore come `--allow-glob`, così resta il motore l'unico giudice di cosa è 
   piccolo, oppure dichiara il path in `allow.txt`, oppure `--anon-guard=off`.
   Il numero non è stimato: il motore scansiona ~2 MB/s su file grandi con un dizionario da 200 voci
   (`python3 scripts/bench-check.py` nel repo), e 12 MB / 20 s lascia un margine di ~3x. Attenzione:
-  il costo dipende dal **dizionario** — a 1 000 voci scende a ~0.9 MB/s, a ~8.000 (lista ISTAT
+  il costo dipende dal **dizionario** — a 1 000 voci scende a ~0.9 MB/s, a ~8.000 (una lista comunale completa
   completa) a ~0.2 MB/s, cioè il cap verrebbe superato (OPEN-ISSUES #26).
 - Un controllo più lento del timeout (20 s): **bloccato**, e il guard **resta attivo** — un file
   lento non è un motore rotto, e non deve spegnere il controllo per il resto della sessione.
