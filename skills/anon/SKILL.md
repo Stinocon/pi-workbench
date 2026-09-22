@@ -67,8 +67,25 @@ quel solo run, ripetibile; stessa sintassi di `allow.txt`), `--stdout` (nessun f
 
 ### Documenti Office/PDF (.docx, .pdf, .xlsx, …)
 
-Il sorgente è binario: la regex non lo vede. Il percorso corretto è **convertire su file**, poi
-anonimizzare il Markdown, poi lavorare sul redatto:
+Il sorgente è binario: la regex non lo vede. Da qui **due strade**, e sono diverse di proposito.
+
+**Se devi CONSEGNARE il documento** (un verbale, una lettera, un foglio): anonimizzalo in place e
+riconsegna lo stesso tipo di file, con impaginazione, intestazioni, piè, commenti e proprietà
+redatti dove vivono:
+
+```
+python3 ~/.anon/anon.py verbale.docx          # -> verbale.redacted.docx (+ mappa in ~/.anon/maps/)
+python3 ~/.anon/deanon.py verbale.redacted.docx ~/.anon/maps/<id>.map.json --out verbale.deanon.docx
+```
+
+Nella UI è il pulsante *Scarica il documento redatto*: **una sola redazione produce due artefatti**
+(il `.docx` e il Markdown per il modello, che è *derivato dal file già redatto*), quindi condividono
+tag e mappa e non possono divergere. Vale per `.docx`, `.xlsx`, `.pptx`, `.odt`. Il file scritto
+viene **riletto e ri-scansionato**: se un valore sopravvive, l'output viene cancellato e il comando
+fallisce. I metadati sono **redatti, non rimossi**: i placeholder entrano in `docProps/core.xml`, così
+il ripristino è esatto.
+
+**Se devi far LEGGERE il documento a un modello**: converti su file e lavora sul Markdown redatto.
 
 ```
 doc_to_markdown(path="verbale.docx", output="verbale.md")   # scrive, non restituisce
@@ -77,21 +94,29 @@ doc_to_markdown(path="verbale.docx", output="verbale.md")   # scrive, non restit
 python3 ~/.anon/deanon.py finale.md ~/.anon/maps/<id>.map.json
 ```
 
-Se il report finale deve essere Word, consegnare il Markdown de-anonimizzato (o riconvertirlo).
-Il guard blocca `doc_to_markdown` **senza** `output` quando il Markdown contiene dati sensibili:
-non è un vicolo cieco, è l'indicazione di usare `output`.
+Il guard usa questa strada (converti + anonimizza + sostituisci il path) quando Pi apre un documento
+binario: è il percorso del `read`, dove l'obiettivo è mettere qualcosa davanti al modello, non
+produrre un file da consegnare. Se `doc_to_markdown` viene bloccato **senza** `output`, non è un
+vicolo cieco: indica di usare `output`.
 
-**Cosa la conversione NON porta con sé** (misurato, `scripts/convert-fidelity.py`: 11 di 17
-caratteristiche preservate): intestazione e piè di pagina, commenti, proprietà del documento
-(titolo, **autore**) e le cancellazioni tracciate. Sono testi che **il motore non vede, quindi non
-redige**, e restano nel `.docx` originale e in ogni PDF esportato da esso. Prima di consegnare un
-contenitore: consegna il Markdown rigenerato (che non li contiene) oppure elimina metadati e
-cronologia revisioni dal file finale. Non chiedere al modello di "pulire" il `.docx`: non lo vede.
+**Perché la conversione non basta per consegnare** (misurato, `scripts/convert-fidelity.py`: 11 di 17
+caratteristiche preservate): intestazione e piè di pagina, commenti, proprietà del documento (titolo,
+**autore**) e le cancellazioni tracciate non sopravvivono. Prima del percorso in-place erano testi
+che il motore non vedeva, quindi non redigeva, e restavano nel `.docx` originale e in ogni PDF
+esportato da esso. Ora li copre la riscrittura in place; nel Markdown derivato **non ci sono**. Non
+chiedere al modello di "pulire" il `.docx`: non lo vede.
 
-`anon.py` **rifiuta** i file binari (exit 2, nessun file scritto: `docx`/`xlsx`/`pptx`/`odt`,
-PDF, immagini). È deliberato: leggere un `.docx` come testo redigerebbe quasi nulla e
-lascerebbe una copia corrotta chiamata `*.redacted.docx`, cioè un file che *sembra*
-anonimizzato e non lo è. Se vedi `REFUSED`, la strada è la conversione qui sopra.
+Se `anon.py` risponde **REFUSED** su un documento con un motivo diverso dal tipo, leggi il motivo:
+un valore che si trova solo *unendo due elementi* (due paragrafi, titolo e autore) viene rifiutato
+invece che riscritto, perché riscriverlo cancellerebbe il testo dell'altro elemento; e un contenitore
+i cui pezzi si espandono troppo (un `zip` bomba) viene rifiutato **prima** di decomprimerlo. In tutti
+e due i casi non si scrive nulla e la strada resta la conversione + anonimizzazione del Markdown.
+
+`anon.py` **rifiuta** (exit 2, nessun file scritto) ciò che non sa riscrivere e verificare:
+`.doc`/`.xls`/`.ppt` legacy, PDF, immagini, e qualunque file che si dichiari contenitore ma non sia
+uno ZIP leggibile. È deliberato: leggere un `.docx` come testo redigerebbe quasi nulla e lascerebbe
+una copia corrotta chiamata `*.redacted.docx`, cioè un file che *sembra* anonimizzato e non lo è. Se
+vedi `REFUSED`, la strada è la conversione qui sopra.
 
 ## Regole (invarianti)
 
