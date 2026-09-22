@@ -63,7 +63,13 @@ mappa), `--dry-run` (mostra cosa verrebbe redatto e dove, senza scrivere nulla),
 `--entities PATH` (ripetibile: sostituisce i tre file di default), `--allow PATH`, `--allow-glob GLOB` (glob dichiarato non-sensibile per
 quel solo run, ripetibile; stessa sintassi di `allow.txt`), `--stdout` (nessun file), `--check`/`--json`,
 `--no-hosts` (salta le euristiche host/telefono/IP), `--quiet`, `--prune-maps DAYS`
-(elenca le mappe piu vecchie di DAYS; aggiungi `--yes` per cancellarle davvero).
+(elenca le mappe piu vecchie di DAYS; aggiungi `--yes` per cancellarle davvero),
+`--audit` (questo file redatto lo è **davvero**? verdict, valori sopravvissuti, quasi-mancati e
+numero di placeholder; su un contenitore legge le parti, e i numeri di riga si riferiscono alla
+vista unita delle parti, non a un file con righe).
+
+Tre comandi, tre domande diverse: `--check` dice *è sensibile?*, `--dry-run` dice *cosa verrebbe
+redatto e dove?*, `--audit` dice *questo redatto è pulito, e con quale mappa?*.
 
 ### Documenti Office/PDF (.docx, .pdf, .xlsx, …)
 
