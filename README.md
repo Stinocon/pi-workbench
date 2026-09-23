@@ -421,6 +421,25 @@ no LLM, no network).
 anon-tool repository first (see `skills/anon/SKILL.md`, which carries the operator's half: the
 workflow, the dictionary, and what the office→Markdown conversion does not carry).
 
+**Who enforces what.** The extension is the enforcement: it runs in the local harness — before a
+`read` executes (`tool_call` can block or rewrite its input) and before a tool result becomes
+context (`tool_result` can replace it) — so the decision never depends on the model's goodwill. The
+skill is the second guardrail: the procedure the agent follows, and the place where the *why* is
+written down. The object of the decision is the **content**, never the file extension: a document
+with nothing to anonymize (a template, a public specification, a price list) reads normally, and the
+way out for a path the engine still flags is a written declaration (`~/.anon/allow.txt`,
+`--anon-guard-allow`, `/anon-allow`), not disabling the guard. What it protects is what the engine
+RECOGNISES (patterns + dictionary): a name that is not in `~/.anon/entities.txt` / `people.txt` /
+`clients.txt` survives the auto-remediation and reaches the model, so the dictionary is the part to
+keep current.
+
+The optional local-model seam (`~/.anon/suggest.py`, in the anon-tool repo) is a CLIENT of the
+engine: it asks a **loopback-only** endpoint (`localhost`, `127.0.0.0/8`, `::1` — anything else is
+refused before a byte is sent) for candidate strings, locates them in the text itself, and prints
+them as proposals (exit 2 = the backend failed, 0 = nothing proposed, 4 = review them). It writes
+nothing — no redacted file, no map — and `anon.py` never imports it, so the engine keeps zero
+network capability; `tests/test_anon.py::OfflineContractTest` asserts both halves.
+
 `bash scripts/check-anon.sh` proves this repo's copy is byte-identical to the live one; the copies
 cannot drift silently. `node scripts/check-anon-guard.cjs` drives the guard at runtime — a
 swallowed error that left the guard silently off would otherwise pass every parse check.
