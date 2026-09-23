@@ -177,6 +177,10 @@ Write:
   trail, no evidence dump, no test counts, no "the review found", no plan for the next step, no
   reference to who asked. That material belongs in the issue, the PR description or the notes — not in
   a line that every clone carries forever.
+- **in a register that reads as human.** The reader was not in the session, and machine-written prose is
+  recognisable: parallel triads, perfect symmetry, stacked dashes, a marketing register, a closing
+  flourish, a metaphor explained instead of trusted. Prose sentences and prose bullets, not a formatted
+  deck. If the machine carries a local style skill, load it and write in the register it defines.
 
 Never write:
 

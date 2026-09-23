@@ -159,6 +159,14 @@ wrote the commit, printed on every commit page and copied into every clone. Tag 
 names follow the same rule. Writing the message *to* the user in chat is not the same as writing it
 *into* the repository.
 
+**Public prose is written to be read as human.** Commit messages, issue and PR comments and replies,
+release notes, announcements and README openings are public material too, and they are drafted, not
+improvised: prose sentences and prose bullets, no parallel triads, no perfect symmetry, no marketing
+register, no stacked dashes, no closing flourish, no metaphor that has to be explained for the point
+to land. If this machine carries a local style skill, load it first and write in the register it
+defines. Public text that reads as machine-written is a defect of the same class as a commit that
+carries the session.
+
 ## 10. Before finishing
 
 Before declaring a task complete:
