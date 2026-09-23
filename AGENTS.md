@@ -142,6 +142,14 @@ and a commit that leaves docs behind is a defect, not a tidy-up for later. Do no
 next task until the sweep is green. Before pushing, run the project's check/gate when one exists
 — a green gate is the baseline for a completed change.
 
+**Commit messages are public prose, and the history is read by strangers.** A message describes the
+change to the code — never the person, never the pass that prepared the repository (publishing,
+scrubbing, anonymising examples), never a private sibling repository, never the author's own machine,
+infrastructure or clients. No first person, no "the author", no "now that it is public", no "removed
+my details": if a sentence would look odd to a reader who was not in the session, it does not belong
+in the message. The same rule covers tag messages and branch names. Writing the message *to* the user
+in chat is not the same as writing it *into* the repository.
+
 ## 10. Before finishing
 
 Before declaring a task complete:

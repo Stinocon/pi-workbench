@@ -163,6 +163,31 @@ credentials and derived/private output stay **local-only** and gitignored. Keep 
 the leak guard and the documented split in agreement — when they disagree, the guard wins and
 the documentation is the bug.
 
+## Commit messages
+
+The history is the most-read document in a repository, and it is read by people who were not in the
+room. A commit message describes **the change to the code**.
+
+Write:
+
+- one short imperative subject (`fix(ui): the drop gesture arms the button`), then the why, the
+  trade-off, and the evidence a reader can re-run — numbers, commands, test names;
+- what is needed to *understand or re-verify* the change, not a re-telling of the session.
+
+Never write:
+
+- **the person**: no first person, no "the author", no names or handles beyond the license holder;
+- **the repository's own lifecycle**: "preparing the repo to be published", "anonymised my examples",
+  "now that it is public", "the license holder is no longer my full name";
+- **a private sibling**: a repository that is private must not appear in a public history;
+- **the author's environment**: a machine path, an internal hostname, the actual infrastructure, a
+  client, an employer — use the generic word ("a router config", not the kit);
+- **a message to the user**: a commit is not a chat reply. Write it as if a stranger owns the repo.
+
+Before writing one: if the sentence would look odd to someone who was not in the session, it does not
+belong in the message. Tag messages and branch names follow the same rule. When a message seems to
+need a personal detail to make sense, it needs rewriting, not the detail.
+
 ## Configuration Examples
 
 When the project requires configuration through environment variables or configuration files,
