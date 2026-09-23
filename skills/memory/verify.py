@@ -25,11 +25,16 @@ Commands:
   verify.py check [id] [--dir DIR]    verify all decisions (or a single id)
   verify.py status [--dir DIR]        human-readable report (effective status + last result)
   verify.py next-id [--dir DIR]       next free DEC number across the scanned dirs
+
+`check <id>` merges into the sidecar, it never replaces it: the records of the other decisions are
+kept. Exit codes for `check`: 0 = ran; 1 = unknown decision id; 2 = a sidecar exists but cannot be
+read, so it was left untouched (fail closed — never overwrite records that were not seen).
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -220,20 +225,36 @@ def verify_one(fm: dict, base: Path) -> dict:
     return {**result, "ok": True, "detail": "evidence present and anchor matched"}
 
 
-def load_sidecar(d: Path) -> dict:
+def load_sidecar(d: Path) -> dict | None:
+    """The sidecar as a dict; {} when absent or empty; None when present but not readable as one.
+
+    None is a fail-closed signal, not an empty store: `check` refuses to overwrite a sidecar it
+    could not read, because writing this run over it would destroy records it never saw — the same
+    data loss the single-id merge exists to prevent. Every way of not reading it (missing
+    permission, bad encoding, invalid or non-object JSON) ends here as None.
+    """
     p = d / SIDECAR
-    if p.exists():
-        try:
-            return json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
-    return {}
+    if not p.exists():
+        return {}
+    try:
+        raw = p.read_text(encoding="utf-8-sig")  # a BOM is valid JSON once stripped
+    except (OSError, UnicodeDecodeError):
+        return None
+    if not raw.strip():
+        return {}
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def write_sidecar(d: Path, data: dict) -> None:
-    (d / SIDECAR).write_text(
-        json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8",
-    )
+    # Written through a temporary file: a crash mid-write must not leave a truncated sidecar, which
+    # would fail closed on the next run and lose the records of decisions that no longer exist.
+    tmp = d / f"{SIDECAR}.tmp"
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp, d / SIDECAR)
 
 
 def cmd_check(args) -> int:
@@ -275,7 +296,21 @@ def cmd_check(args) -> int:
         report.append(f"{did}: {verdict} — {res['detail']}")
 
     for d, data in sidecars.items():
-        write_sidecar(d, data)
+        # MERGE, don't clobber: `check <id>` must keep the other decisions' records. A record is
+        # pruned only when its decision is really gone: it is neither among the ids discovered in
+        # this directory nor still present under the conventional filename. A decision file that
+        # exists but was skipped (unreadable, mid-edit, frontmatter that does not parse), and one
+        # whose filename differs from its id, both keep their history.
+        existing = load_sidecar(d)
+        if existing is None:
+            print(f"[verify] {d / SIDECAR} cannot be read — refusing to overwrite it; "
+                  "fix or remove it and re-run.", file=sys.stderr)
+            return 2
+        known = {did for did, (fp, _b) in files.items() if fp.parent == d}
+        merged = {k: v for k, v in existing.items()
+                  if k in known or (d / f"{k}.md").exists()}
+        merged.update(data)
+        write_sidecar(d, merged)
 
     print("\n".join(report))
     return 0
@@ -292,7 +327,8 @@ def cmd_status(args) -> int:
     for did in sorted(files):
         fm = parsed[did]
         eff = effective_status(fm, parsed)
-        sc = load_sidecar(files[did][0].parent).get(did, {})
+        sc = (load_sidecar(files[did][0].parent) or {}).get(did)
+        sc = sc if isinstance(sc, dict) else {}
         last = sc.get("last_verified", "-")
         res = sc.get("result", "-")
         stmt = str(fm.get("statement", "") or "")

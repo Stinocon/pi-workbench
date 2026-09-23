@@ -102,7 +102,10 @@ Regole del tier pesante:
    - `verify: human` (LOW) — decisione/preferenza umana: **mai** auto-verificata né
      auto-reinterpretata; marcata «needs-human» ed esposta all'utente.
    Il trail di verifica (`last_verified`, `result`, `confidence`) vive nel sidecar derivato
-   `verification.json` (gitignored), **non** nel file immutabile.
+   `verification.json` (gitignored), **non** nel file immutabile. Il sidecar si **unisce**, mai
+   si riscrive: `check <id>` aggiorna la sua voce e lascia intatte le altre (una voce si elimina
+   solo quando la decisione non c'è più), e un sidecar che non si riesce a leggere **non** viene
+   sovrascritto — `check` esce con 2 invece di distruggere record che non ha visto.
 4. **Trigger, non cron.** La verifica scatta: (a) *prima* di toccare codice coperto da una
    decisione; (b) *alla registrazione* (da `proposed` a `validated` solo dopo check evidenza
    + conferma umana per `human`); (c) *durante la compaction* per le decisioni citate.
