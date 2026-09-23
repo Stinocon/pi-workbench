@@ -142,18 +142,22 @@ and a commit that leaves docs behind is a defect, not a tidy-up for later. Do no
 next task until the sweep is green. Before pushing, run the project's check/gate when one exists
 — a green gate is the baseline for a completed change.
 
-**Commit messages are public prose, and the history is read by strangers.** A message describes the
-change to the code — never the person, never the pass that prepared the repository (publishing,
-scrubbing, anonymising examples), never a private sibling repository, never the author's own machine,
-infrastructure or clients. No first person, no "the author", no "now that it is public", no "removed
-my details": if a sentence would look odd to a reader who was not in the session, it does not belong
-in the message. An assistant that composes the message must not credit itself: no
-`Co-Authored-By: Claude …`, no `Generated with …`, no `Claude-Session: <url>` trailer. That is
-permanent, machine-readable metadata saying a model wrote the commit, printed on every commit page and
-copied into every clone; and the same goes for any trace of the request that produced the message
-("the operator asked for it", "on request", "per my own rule"). The same rule covers tag messages and
-branch names. Writing the message *to* the user in chat is not the same as writing it *into* the
-repository.
+**Commit messages are public material, written for a stranger.** A message says
+**what changed** — a fix, a feature, a removal, a rename, a doc update — as a human would write it, as
+concisely as possible and as anonymously as possible. It is **not the author's memory**: it must not
+carry the session that produced it, the reasoning trail, the evidence dump, the test counts, "the
+review found", who asked for it, or what was planned next. One imperative subject line; a body only
+when the change cannot be understood without it (a non-obvious behaviour change, a migration step, a
+breaking change), and then only what a reader needs to act on.
+
+Never in a message: first person; "the author"; the repository's own lifecycle (publishing, scrubbing,
+anonymising examples, "now that it is public"); a private sibling repository; the author's machine,
+paths, infrastructure, clients or employer; the request behind the change ("the operator asked for
+it", "on request", "per my own rule"); an AI-credit trailer or a session link (`Co-Authored-By: Claude
+…`, `Generated with …`, `Claude-Session: <url>`) — permanent, machine-readable metadata saying a model
+wrote the commit, printed on every commit page and copied into every clone. Tag messages and branch
+names follow the same rule. Writing the message *to* the user in chat is not the same as writing it
+*into* the repository.
 
 ## 10. Before finishing
 

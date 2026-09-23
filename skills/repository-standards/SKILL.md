@@ -166,13 +166,17 @@ the documentation is the bug.
 ## Commit messages
 
 The history is the most-read document in a repository, and it is read by people who were not in the
-room. A commit message describes **the change to the code**.
+room. A commit message says **what changed**, for a stranger, in as few words as a human would use.
 
 Write:
 
-- one short imperative subject (`fix(ui): the drop gesture arms the button`), then the why, the
-  trade-off, and the evidence a reader can re-run — numbers, commands, test names;
-- what is needed to *understand or re-verify* the change, not a re-telling of the session.
+- one short imperative subject (`fix(ui): the drop gesture arms the button`); a body only when the
+  change cannot be understood without it — a non-obvious behaviour change, a migration step, a
+  breaking change — and then only what a reader needs to act on;
+- the change, never the session that produced it. A message is not the author's memory: no reasoning
+  trail, no evidence dump, no test counts, no "the review found", no plan for the next step, no
+  reference to who asked. That material belongs in the issue, the PR description or the notes — not in
+  a line that every clone carries forever.
 
 Never write:
 
