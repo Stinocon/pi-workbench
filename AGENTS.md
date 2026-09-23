@@ -147,8 +147,13 @@ change to the code — never the person, never the pass that prepared the reposi
 scrubbing, anonymising examples), never a private sibling repository, never the author's own machine,
 infrastructure or clients. No first person, no "the author", no "now that it is public", no "removed
 my details": if a sentence would look odd to a reader who was not in the session, it does not belong
-in the message. The same rule covers tag messages and branch names. Writing the message *to* the user
-in chat is not the same as writing it *into* the repository.
+in the message. An assistant that composes the message must not credit itself: no
+`Co-Authored-By: Claude …`, no `Generated with …`, no `Claude-Session: <url>` trailer. That is
+permanent, machine-readable metadata saying a model wrote the commit, printed on every commit page and
+copied into every clone; and the same goes for any trace of the request that produced the message
+("the operator asked for it", "on request", "per my own rule"). The same rule covers tag messages and
+branch names. Writing the message *to* the user in chat is not the same as writing it *into* the
+repository.
 
 ## 10. Before finishing
 

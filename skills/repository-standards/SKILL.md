@@ -182,7 +182,15 @@ Never write:
 - **a private sibling**: a repository that is private must not appear in a public history;
 - **the author's environment**: a machine path, an internal hostname, the actual infrastructure, a
   client, an employer — use the generic word ("a router config", not the kit);
-- **a message to the user**: a commit is not a chat reply. Write it as if a stranger owns the repo.
+- **a message to the user**: a commit is not a chat reply. Write it as if a stranger owns the repo;
+- **an AI-credit trailer or a session link**: no `Co-Authored-By: Claude …`, no `Generated with …`, no
+  `Claude-Session: <url>`. It is permanent, machine-readable metadata saying a model wrote the commit,
+  printed on every commit page and copied into every clone, and it survives a force-push only if the
+  history is rewritten again. An assistant that adds it by default has to be told not to, once, in its
+  instructions — cheaper than a `filter-repo --message-callback` pass over every repository afterwards;
+- **the authoring process and the request**: "the operator asked for it", "on request", "per my own
+  rule", "as requested", fragments of whoever asked. The change stands on its own reason, not on who
+  requested it.
 
 Before writing one: if the sentence would look odd to someone who was not in the session, it does not
 belong in the message. Tag messages and branch names follow the same rule. When a message seems to
