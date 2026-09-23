@@ -152,6 +152,16 @@ python3 ~/.anon/suggest.py verbale.txt --url http://127.0.0.1:11434/v1/chat/comp
 - Il client sta **fuori** dal motore: `anon.py` non lo importa e non ha alcuna capacità di rete —
   verificato da `tests/test_anon.py::OfflineContractTest`. `suggest.py` è l'unico file del progetto
   autorizzato a parlare con la rete, e solo in loopback.
+- **Come si usa**: dal terminale come sopra, oppure dalla **UI, scheda Dizionario** — il pannello
+  compare solo se il server è stato avviato con `--suggest-url` e `--suggest-model`. Incolli il
+  testo, *Suggerisci*, spunti le proposte vere, scegli il tipo, *Aggiungi al dizionario* (append nel
+  file che stai editando), poi **Salva** e rilancia l'anonimizzazione. Il seam non scrive da solo.
+- **Il modello è la variabile.** Misurato con il Qwen3.5-9B locale (MTPLX): 138 s e 4096 token per
+  una frase, risposta vuota — è un modello *reasoning* che pensa finché esaurisce il budget. Il seam
+  lo riporta come **errore** (`--max-tokens` è configurabile, `reasoning_content` viene letto come
+  fallback), non come "niente da segnalare". Un modello piccolo *instruct*, o un budget più alto, è
+  la strada: la parte da scegliere è il modello, non il plumbing.
+- Il server locale che vuole un header lo riceve: `--api-key` (Bearer) e `--header 'Nome: valore'`.
 
 ## Regole (invarianti)
 
