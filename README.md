@@ -62,17 +62,24 @@ extensions/
 ├── compact-tool.ts           compact tool — model-callable context compaction (schedules at turn end)
 ├── tool-risk.ts              risk annotations for built-in tools + /risk + opt-in --confirm-destructive
 ├── declarative-hooks.ts      declarative shell hooks (reads ~/.pi/agent/hooks.json; Codex-Hooks-style)
-└── verify-gates.ts           verify_gates tool + /verify + agent_settled gate enforcement (.pi/verify.json)
+├── verify-gates.ts           verify_gates tool + /verify + agent_settled gate enforcement (.pi/verify.json)
+├── offload-rules.ts          enforced offload rules: adversarial-review BLOCK before "done" +
+│                             standing MUST-offload mandates (reads ~/.pi/agent/offload-rules.json)
+└── anon-guard.ts             privacy guard: blocks un-anonymized sensitive content, auto-converts
+                              binaries, /anon + /deanon (see "Privacy — the anon guard")
 subagent/                     The subagent tool (dispatcher): spawns isolated Pi processes per
 │                             worker; single / parallel / chain modes
 └── (index.ts + agents.ts)
 scripts/
+├── check-anon.sh             deterministic gate: this repo's anon guard/skill ↔ the live ones (sha256)
+├── check-anon-guard.cjs      deterministic gate: RUNTIME-drive anon-guard (a swallowed error must not leave it silently off)
 ├── check-config-docs.sh      deterministic gate: README tree + skills ↔ real dirs (refuses commit on drift)
 ├── check-extensions.cjs      deterministic gate: jiti parse-check of every extension
 ├── check-skill-frontmatter.cjs deterministic gate: YAML-parse every skill frontmatter
 ├── check-drift.sh            READ-ONLY: repos whose local content GitHub lacks (drift gate)
 └── pi-preflight.zsh          source from ~/.zshrc: parse-check the live extensions before every `pi` launch
 skills/
+├── anon/
 ├── clean-marks/
 ├── coding-standards/
 ├── council/
@@ -361,7 +368,7 @@ facts, retrieval or mechanical work.
 
 ### Harness primitives — `/verify`, `verify_gates`, `/risk`, `compact`
 
-Four local stopgap extensions that turn the "done = green deterministic gate" policy into
+Five local stopgap extensions that turn the "done = green deterministic gate" policy into
 mechanisms (no core change; adopt-and-discard if Pi ships native equivalents):
 
 - **`verify-gates.ts`** — deterministic task verification. A project declares its gates
@@ -379,16 +386,51 @@ mechanisms (no core change; adopt-and-discard if Pi ships native equivalents):
   `~/.pi/agent/hooks.json` and runs each hook's command through `/bin/sh -c` on `tool_call`
   (can block), `session_before_compact` (can cancel), and `tool_execution_start/end` +
   `before_agent_start` (side effects). See `hooks.example.json`.
+- **`offload-rules.ts`** — deterministic offload enforcement. Reads `~/.pi/agent/offload-rules.json`;
+  the `adversarial-review` BLOCK rule requires a review by a *different* model after a critical
+  file is modified (report on `agent_settled` by default; `pi --offload-enforce` feeds it back to
+  the agent), plus standing MUST-offload `directives` injected into the system prompt. The model
+  proposes offload; the harness imposes it. See `offload-rules.example.json`.
 
-Example configs ship at the repo root: `verify.example.json`, `hooks.example.json`.
+Example configs ship at the repo root: `verify.example.json`, `hooks.example.json`,
+`offload-rules.example.json`.
 
 ---
+
+## Privacy — the `anon` guard
+
+`extensions/anon-guard.ts` is a deterministic, local data-loss-prevention layer: it keeps
+un-anonymized sensitive content out of the model context, so client documents can be worked on
+with a cloud model. It is the **enforcement, not the product** — the engine is `anon.py` from the
+[anon-tool](https://github.com/Stinocon/anon-tool) repository, installed at `~/.anon/` (stdlib only,
+no LLM, no network).
+
+- blocks (does not warn) `read` and `doc_to_markdown` when the engine finds un-redacted content;
+- hard-blocks `~/.anon/maps/` — the real values behind the placeholders — for every tool, symlinks
+  included;
+- a **binary document** (docx/pdf/xlsx) is converted and anonymized on the fly and the read is
+  redirected to the redacted copy (`--anon-guard-auto=ask|on|off`, default `ask`); any failure
+  falls back to the block, never to "clean" (DEC-0014);
+- `/anon <file>` anonymizes and pastes the redacted text; `/deanon <file> [map]` restores the real
+  values into a **file** — never into the editor, because that is what has to stay out of context;
+- `~/.anon/allow.txt`, `--anon-guard-allow`, `/anon-allow <path>`: declare a public path instead of
+  disabling the guard. Files over 12 MB, and anything the engine cannot scan, are refused
+  (fail-closed); only a missing engine fails open, with a visible indicator.
+
+**It needs the engine**: without `~/.anon/anon.py` the guard cannot run and fails open. Install the
+anon-tool repository first (see `skills/anon/SKILL.md`, which carries the operator's half: the
+workflow, the dictionary, and what the office→Markdown conversion does not carry).
+
+`bash scripts/check-anon.sh` proves this repo's copy is byte-identical to the live one; the copies
+cannot drift silently. `node scripts/check-anon-guard.cjs` drives the guard at runtime — a
+swallowed error that left the guard silently off would otherwise pass every parse check.
 
 ## Global skills
 
 These are progressive-disclosure skills: only descriptions are always in context; Pi reads the
 full `SKILL.md` when a task matches.
 
+- **anon** — Anonymize sensitive documents BEFORE they enter Pi (client names, people, emails, phones, IPs, hostnames, URLs, API keys) with a deterministic local engine, then work on the redacted copy and re-apply the real values to the finished document. Enforced by `anon-guard.ts`; requires the engine from the anon-tool repository at `~/.anon/`. Local-only, no LLM, no network.
 - **clean-marks** — Detect and remove invisible/bidi Unicode characters from text files — hygiene and trojan-source defense on content you own. Deterministic, zero dependencies, local-only.
 - **coding-standards** — Apply consistent, readable, maintainable and secure coding standards when writing, reviewing or modifying software — any language. Honesty over agreement, declared gaps over invented values, deterministic code boundaries.
 - **council** — Convene an adversarial council of five deliberately partial perspectives with blind peer review and a synthesis, for ONE high-stakes judgement call under uncertainty. Not for calculations, facts, or mechanical work.

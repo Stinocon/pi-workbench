@@ -1,0 +1,15 @@
+{
+  "rules": [
+    {
+      "id": "adversarial-review",
+      "type": "block",
+      "criticalExtensions": [".ts", ".tsx", ".js", ".mjs", ".cjs", ".py", ".sh", ".bash", ".yaml", ".yml", ".json", ".sql", ".go", ".rs", ".tf", ".toml"],
+      "reviewAgents": ["miner-xhigh", "miner-max"],
+      "maxReminders": 1,
+      "message": "Adversarial review required: critical files were modified but no review by a different model ran. Run subagent(agent=\"miner-xhigh\", task=\"adversarially review this change's diff — correctness, edge cases, error paths, security\") before declaring the task done."
+    }
+  ],
+  "directives": [
+    "Prose-to-structure offload (mandatory): when the request is to convert a document, notes, transcript, or list into a structured table / summary / extraction, offload it with delegate(model=\"draft\") and review the output cell-by-cell — do not perform the conversion inline."
+  ]
+}
