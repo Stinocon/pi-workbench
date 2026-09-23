@@ -10,6 +10,11 @@ Motore **deterministico e locale** (`~/.anon/anon.py`): regex + dizionario curat
 stdlib, zero dipendenze, zero rete. **Non usa un LLM**: per anonimizzare un modello dovrebbe
 prima *ricevere* i dati. Solo DOPO la redazione il testo può entrare nel contesto.
 
+**Dove sta cosa** — il motore è il repo pubblico [anon-tool](https://github.com/Stinocon/anon-tool)
+(MIT, Python stdlib): `~/.anon/anon.py` è la copia installata che questa skill usa. La parte Pi —
+questa skill e l'estensione di enforcement — sta in
+[pi-workbench](https://github.com/Stinocon/pi-workbench).
+
 ## Contract
 
 - **consumes** — un file di testo (o un documento convertito: usa la skill `docs` / il tool
