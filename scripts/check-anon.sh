@@ -2,10 +2,13 @@
 # check-anon.sh — this repo's anon integration must be byte-identical to the live one.
 #
 # The guard, the skill and the runtime harness exist in three places: the live Pi config
-# (~/.pi/agent/), the pi-customization repo, and this distribution repo. A distribution that drifts
-# from the runtime is worse than no distribution: it ships a guard that is not the guard, and the
-# difference is exactly what nobody re-reads. Comparing sha256 is the cheapest thing that cannot be
-# argued with.
+# (~/.pi/agent/), the private canonical clone that carries the customization, and this distribution
+# repo. A distribution that drifts from the runtime is worse than no distribution: it ships a guard
+# that is not the guard, and the difference is exactly what nobody re-reads. Comparing sha256 is the
+# cheapest thing that cannot be argued with.
+#
+# The private clone's PATH is not written here: this file is public, and the private layout is not
+# public information. Pass it in, or the check reports the copies it could not verify.
 #
 #   bash scripts/check-anon.sh          # compare (exit 1 on drift) — the gate
 #   bash scripts/check-anon.sh --write  # copy the live files in
@@ -15,7 +18,12 @@ set -uo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIVE_PI="${LIVE_PI:-$HOME/.pi/agent}"
-CANON_REPO="${CANON_REPO:-$DIR/../pi-customization}"
+CANON_REPO="${CANON_REPO:-}"
+if [ -z "$CANON_REPO" ]; then
+  echo "check-anon: CANON_REPO is not set — the private canonical clone is not named in this" >&2
+  echo "check-anon: public repository. Point it at the clone to verify the runtime harness:" >&2
+  echo "check-anon:   CANON_REPO=/path/to/private/clone bash scripts/check-anon.sh" >&2
+fi
 WRITE=0
 [ "${1:-}" = "--write" ] && WRITE=1
 
