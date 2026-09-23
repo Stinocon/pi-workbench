@@ -124,6 +124,30 @@ uno ZIP leggibile. È deliberato: leggere un `.docx` come testo redigerebbe quas
 una copia corrotta chiamata `*.redacted.docx`, cioè un file che *sembra* anonimizzato e non lo è. Se
 vedi `REFUSED`, la strada è la conversione qui sopra.
 
+## Suggerimenti da un modello locale (opzionale, scaffold)
+
+`~/.anon/suggest.py` è il seam verso un modello **locale**: chiede a un endpoint loopback delle
+stringhe candidate, le **localizza** lui nel testo (un valore che il modello inventa viene scartato)
+e le stampa come **proposte**. Non scrive nulla: né file redatto, né mappa, né placeholder.
+
+```bash
+python3 ~/.anon/suggest.py verbale.txt --url http://127.0.0.1:11434/v1/chat/completions \
+    --model <nome-modello> --json
+```
+
+- **Solo loopback**: `localhost`, `127.0.0.0/8`, `::1`. Qualunque altro host è rifiutato **prima**
+  di inviare un byte — il documento non esce dalla macchina, e un endpoint in LAN non è una
+  scorciatoia, è un'altra cosa.
+- **Fail-closed**: un backend che non risponde è un **errore** (exit 2); zero proposte è exit 0;
+  proposte da rivedere è exit 4. Le tre cose non si confondono: "non ha risposto" non deve avere la
+  faccia di "non c'è nulla da segnalare". Senza `--url`/`--model` non chiede niente e lo dice.
+- **Il modello non decide cosa si redige**: nomina valori, l'engine li trova nel documento;
+  applicarli resta compito di `anon.py` (dizionario o `--entities` esplicito). È l'aiuto previsto per
+  il buco dichiarato dei **riferimenti contestuali** (regola 4): trovarli, non delegare.
+- Il client sta **fuori** dal motore: `anon.py` non lo importa e non ha alcuna capacità di rete —
+  verificato da `tests/test_anon.py::OfflineContractTest`. `suggest.py` è l'unico file del progetto
+  autorizzato a parlare con la rete, e solo in loopback.
+
 ## Regole (invarianti)
 
 1. **Non alterare i placeholder.** Ogni placeholder porta un suffisso che identifica la mappa
@@ -131,7 +155,10 @@ vedi `REFUSED`, la strada è la conversione qui sopra.
    deanonimizzazione non riconosce più il token e il documento non è consegnabile. I placeholder
    si copiano **verbatim**, come qualsiasi altra parte del testo.
 2. **Mai il file originale dentro Pi.** Se `read` viene bloccato da `anon-guard`, non aggirarlo:
-   anonimizza e leggi il `.redacted`.
+   anonimizza e leggi il `.redacted`. Se invece il file è **legittimamente pulito** (un template, una
+   specifica pubblica, un listino), la strada non è aggirare il blocco ma *dichiararlo*, così la
+   deroga resta scritta e verificabile: `allow.txt` o `--anon-guard-allow`. La guardia resta l'unico
+   giudice di cosa è "pulito", e il giudizio è sul CONTENUTO, mai sull'estensione del file.
 3. **`~/.anon/maps/` non entra mai nel contesto.** Contiene i valori reali. `anon-guard`
    blocca la lettura di quella directory; non forzare.
 4. **Aggiorna il dizionario.** Il dizionario è diviso per tipo, in `~/.anon`: `entities.txt`
@@ -160,6 +187,25 @@ anonimizzare il file, oppure — se il file è legittimamente pubblico — aggiu
 Per una deroga che vale **solo per la sessione corrente**, senza toccare il file:
 `pi --anon-guard-allow='/a/*,/b/*'` (o `PI_ANON_GUARD_ALLOW`). I glob di sessione vengono passati
 al motore come `--allow-glob`, così resta il motore l'unico giudice di cosa è "consentito".
+
+**Il blocco non significa "nessun documento si legge".** L'oggetto della decisione è il
+**contenuto**, non l'estensione: a giudicare è il motore (pattern + dizionario + `allow.txt`), quindi
+un documento che di suo non contiene nulla da anonimizzare passa e si legge normalmente — un
+template, una specifica pubblica, un listino, un manuale. Bloccare per estensione sarebbe
+inutilmente restrittivo, e renderebbe lo strumento inutilizzabile proprio nei casi in cui non serve.
+Da qui la divisione dei ruoli, che vale la pena tenere a mente:
+
+- l'**estensione** è l'enforcement: riconosce, valuta, blocca o bonifica — **in locale, prima che il
+  contenuto entri nel contesto, automaticamente e senza dipendere dalla volontà del modello**. È il
+  pezzo che fa il lavoro grosso;
+- lo **skill** (questo file) è il secondo guardrail: la procedura che l'agente segue, e il posto
+  dove sta scritto perché. Non intercetta nulla e non blocca nulla.
+
+E il confine di sostanza: la guardia non è un giudizio semantico, protegge ciò che il dizionario e i
+pattern **riconoscono**. Un nome proprio che non è in `entities.txt`/`people.txt`/`clients.txt`
+sopravvive alla bonifica e arriva al modello — per questo la regola 4 è la più importante di tutte,
+e per questo, nella bonifica automatica, quello che il modello riceve è il testo redatto (i valori
+riconosciuti sono placeholder, il resto è il documento).
 
 **Perimetro di enforcement** (preciso, non implicito):
 
