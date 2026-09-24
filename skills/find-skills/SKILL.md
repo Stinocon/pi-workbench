@@ -26,8 +26,8 @@ The Skills CLI (`npx skills`) is the package manager for the open agent skills e
 **Key commands:**
 
 - `npx skills find [query] [--owner <owner>]` - Search for skills interactively or by keyword, optionally scoped to a GitHub owner
-- `npx skills add <package>` - Install a skill from GitHub or other sources
-- `npx skills update` - Update all installed skills
+- `npx skills add <package>` - Fetch a skill for INSPECTION; installing it is a separate decision
+- `npx skills update` - **Do not run this.** It updates third-party skills in place: see the warning
 
 **Browse skills at:** https://skills.sh/
 
@@ -98,7 +98,8 @@ Learn more: https://skills.sh/vercel-labs/agent-skills/react-best-practices
 If the user wants to proceed, you can install the skill for them:
 
 ```bash
-npx skills add <owner/repo@skill> -g -y
+# Inspect it first; do not install-and-run:
+npx skills add <owner/repo@skill> --dry-run 2>/dev/null || npx skills view <owner/repo@skill>
 ```
 
 The `-g` flag installs globally (user-level) and `-y` skips confirmation prompts.

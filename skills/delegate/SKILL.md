@@ -1,7 +1,7 @@
 ---
 name: delegate
-description: "Cloud-first worker offload. The cloud primary agent offloads ONE bounded, verifiable subtask to a worker and validates the result inline. Default worker is the configured draft tier (a cheap, fast model) for prose → structured table/summary and small self-contained code drafts, always reviewed cell-by-cell; the configured local worker is the offline fallback. Never for deterministic extraction/enumeration/sort (grep/awk/python do those), analytical reconciliation, reasoning, security, infrastructure writes, or ambiguous work."
-summary: bounded worker offload (cloud primary → draft worker / local fallback / cloud escalation)
+description: "Cloud-first worker offload. The cloud primary agent offloads ONE bounded, verifiable subtask to a worker and validates the result inline. Default worker is the Mistral draft tier (codestral-latest) for prose → structured table/summary and small self-contained code drafts, always reviewed cell-by-cell; the local MTPLX/Qwen worker is the offline fallback. Never for deterministic extraction/enumeration/sort (grep/awk/python do those), analytical reconciliation, reasoning, security, HA writes, or ambiguous work."
+summary: bounded worker offload (cloud primary → Mistral draft / local fallback / cloud escalation)
 ---
 
 # Delegate — bounded worker offload (cloud-first)
@@ -15,13 +15,11 @@ you can validate it and continue.
 
 Three targets, in order of preference:
 
-1. **`draft` (draft tier, default)** — a cheap, fast model you configure as the draft worker in
-   `~/.pi/agent/workers.json` (see `workers.example.json`). For prose → structured table/summary
-   and small self-contained code drafts.
-2. **`local` (offline fallback)** — a local model configured as the offline fallback in
-   `workers.json`. Weaker results; only for prose → table/summary when the draft worker is
-   unavailable.
-3. **cloud id** — a concrete cloud model (e.g. `<your-cloud-model>`) for a rare, justified
+1. **`mistral` (draft tier, default)** — `codestral-latest` on the user's Mistral account. For
+   prose → structured table/summary and small self-contained code drafts. Cheap (~$0.0007/call).
+2. **`local` (offline fallback)** — MTPLX/Qwen 3.5 9B, free and local. Weaker results; only for
+   prose → table/summary when Mistral is unavailable.
+3. **cloud id** — a concrete OpenCode Go model (e.g. `deepseek-v4-pro`) for a rare, justified
    escalation when a single subtask needs reasoning beyond the primary.
 
 This is **not** a model switch, and it is **not** `dispatch`. `dispatch` decomposes a larger task
@@ -32,28 +30,31 @@ into parallel `miner-*` cloud workers. `delegate` is a single bounded task to a 
 **Keep on CLOUD (yourself):**
 
 - security-sensitive reasoning (assessment, threat modeling, authN/authZ, crypto, incident decisions)
-- smart-home / infrastructure writes: modifying automations/scripts/scenes/dashboards/helpers, renaming entities
+- Home Assistant writes: modifying automations/scripts/scenes/dashboards/helpers, renaming entities
 - complex code modification, architecture/design, security review
 - ambiguous tasks, multi-component interactions, correctness-over-speed work
 - cross-file / multi-source reconciliation (entity-ID or config consistency across firmware +
   config + docs): looks mechanical but worker models misclassify domains and miss entities
 - destructive operations, external side effects, production systems
 
-**MAY offload to the DRAFT worker (`model: "draft"`):**
+**MAY offload to the MISTRAL draft worker (`model: "mistral"`):**
 
 - prose → structured table/summary (e.g. a troubleshooting doc into a symptom/cause/fix table)
 - small self-contained code drafts (boilerplate, parsers, transformers — a function, not a system)
-- both ONLY when genuinely faster than doing it yourself. Treat the output as a DRAFT to review
+- prose → structure is MANDATORY, not a judgement call: `offload-rules.json` carries it as a standing
+  directive, because a conversion done inline is a conversion nobody reviewed. Treat the output as a
+  DRAFT to review cell-by-cell; the other rows are still only worth it when genuinely faster.
   cell-by-cell — never as final.
 
 **LOCAL worker (`model: "local"`) — offline fallback ONLY:**
 
-- prose → table/summary when the draft worker is rate-limited or unreachable. Same DRAFT rule.
+- prose → table/summary when Mistral is rate-limited or unreachable. Same DRAFT rule.
 
 **Do NOT offload to ANY worker (no LLM at all):**
 
 - parsing, enumeration, string extraction, simple lookup, sorting, filtering → `grep`/`awk`/`jq`/
   `python` do it deterministically at zero cost and zero error; an LLM adds error, not value.
+  (Empirically reproduced on codestral-latest too, see Empirical notes.)
 - YAML/JSON/XML parsing, entity/state enumeration, cross-file / multi-source reconciliation,
   section→domain mapping → empirically unreliable on every cheap worker. Keep on CLOUD or
   escalate to a cloud model via `delegate`.
@@ -61,9 +62,9 @@ into parallel `miner-*` cloud workers. `delegate` is a single bounded task to a 
 Offload only when **all** hold: LLM-appropriate (draft, not deterministic) **and** bounded **and**
 verifiable **and** genuinely faster than doing it by hand. **Uncertainty → CLOUD.**
 
-## Draft delegation contract
+## Mistral draft delegation contract
 
-When offloading to the draft worker, provide:
+When offloading to the Mistral draft worker, provide:
 
 1. `objective` — the single bounded question.
 2. `context` / `files` — the minimum data (relevant excerpts), never the whole repo/conversation.
@@ -74,7 +75,7 @@ Example:
 
 ```text
 delegate(
-  model = "draft",
+  model = "mistral",
   objective = "Convert this troubleshooting doc into a symptom/cause/fix table",
   files = [ { path = "TROUBLESHOOTING.md", excerpt = "…" } ],
   constraints = ["do not modify anything", "do not invent entries not in the doc"],
@@ -99,42 +100,54 @@ yourself on CLOUD. Retries are bounded (0–1).
 worker failure → CLOUD takeover      (never worker → worker → … loop)
 ```
 
-## Draft worker unavailable (credit exhausted / rate limited)
+## Mistral credit exhaustion → free tier (graceful degradation)
 
-The draft tier is meant to degrade gracefully:
+The Mistral tier is designed to keep working when the €10 pay-as-you-go credit runs out:
 
-1. On **402 (credit exhausted)** / **429 (rate limit)** / auth failure, the tool returns a
-   clear error — do the task inline on CLOUD (or `local` for prose→table).
-2. **Never auto-retry the draft worker in a loop** — rate-limit windows are real, and the
-   agent's own retries already amplify pressure. Space offloads; do not burst them.
-3. **Privacy rule:** if the draft provider's plan trains on your inputs, never delegate content
-   containing private/client data to it — only non-sensitive draft material. Check the
-   provider's data policy before relying on it for anything sensitive.
+1. **Switch the Mistral workspace to the "Experiment" free tier** in the console. Same API key,
+   same endpoint, same model ids — **no change in Pi config**.
+2. The free tier covers the model range but with **tighter rate limits** (~1 req/s,
+   ~500k tokens/min, ~1B tokens/month — live numbers in Admin Console → Limits win) and
+   **training consent**: on the free tier your inputs may be used to train models.
+3. **Privacy rule:** while on the free tier, never delegate content containing private/client
+   data to Mistral — only non-sensitive draft material. (The pay-as-you-go plan does not train
+   on your data.)
+4. On **402 (credit exhausted)** / **429 (rate limit)** the tool returns a clear error; do the
+   task inline on CLOUD (or `local` for prose→table). Never auto-retry the Mistral worker in a
+   loop — the 429 recovery window is ~90 s and pi's own retries already amplify rate-limit
+   pressure.
 
-## Empirical notes (verified, general pattern)
+## Empirical notes (verified, 2026-08 / 2026-09)
 
-- **Deterministic extraction fails on cheap models.** A filter+sort task over a catalog came
-  back wrong in two different ways from a cheap model — run 1 dropped rows (unrequested dedup);
-  run 2 kept all rows but added false positives and ignored the sort entirely. Both runs: zero
-  invented values, zero field errors. Verdict: extraction/enumeration/sort is not an LLM task —
-  `grep`/`awk`/`python` only.
-- **Draft models work where they should.** Prose→table came back correct with zero invention,
-  and a small self-contained function draft passed its test cases on the first try. The draft
-  tier is for prose→structure and small drafts — nothing else.
-- **Local models are slow and weaker.** Expect minutes per call; never worth it for anything
-  `grep`/`awk` answers. They can reproduce sections verbatim yet still drop the single most
-  critical instruction and add small extrapolations — review every cell.
-- **The bottleneck is the instruction class, not the specific model.** Cheap models do not
-  reliably follow multi-clause deterministic instructions. That is why deterministic work stays
-  with deterministic tools, at zero cost and zero error.
+- **`allowRead` path redaction — FIXED in `delegate.ts`**: the "dense token" heuristic
+  (`[A-Za-z0-9+/=]{24,}`) matched slash-containing absolute paths and redacted them, breaking
+  `allowRead`. Fixed by rejecting `/` in the dense-token guard. Prefer `allowRead` over inlining.
+- **Local Qwen latency**: ~1–3.5 min per call. Never worth it for anything `grep`/`awk` answers.
+- **Local Qwen prose → table**: reproduced 21/21 sections verbatim with zero invented rows, but
+  dropped the single most-critical instruction in ~2 sections and added small extrapolations.
+- **Deterministic extraction fails on cheap models, not just Qwen** (2026-09, codestral-latest,
+  €10 pay-as-you-go account): a filter+sort task over the Mistral catalog came back wrong twice,
+  differently — run 1 dropped 11/21 rows (unrequested dedup); run 2 kept all 21 but added 4
+  false positives and **ignored the sort entirely**. Both runs: 0 invented rows, 0 field errors.
+  Verdict: extraction/enumeration/sort is not an LLM task — `grep`/`awk`/`python` only.
+- **Mistral draft tier works where it should** (2026-09, codestral-latest): prose→table 6/6 rows
+  correct, zero invention, ~$0.0007, 4 s; small self-contained function draft passed 12/12 test
+  cases on first try (~$0.0007, 7 s). Better than the local Qwen baseline on the same class.
+- **Mistral rate limits are real**: ~5 rapid requests (amplified by pi's auto-retries) hit an
+  account-wide 429 that recovered in ~90 s; `devstral-2512` stayed 429 even in a clean window
+  (not entitled on the plan). Space Mistral offloads; do not burst them.
 
-## Routing rule (the invariant)
+## Decision record (2026-09-09, supersedes the 2026-08-25 local-only rule)
 
-The default offload target is the **draft worker** for prose → structured table/summary and
-small self-contained code drafts, always reviewed. The local worker remains the offline
-fallback only. Deterministic extraction/enumeration/sort is **never** an LLM task —
-`grep`/`awk`/`python` only — because cheap models fail it while deterministic tools get it
-right at zero cost. The cloud escalation path via `delegate` covers everything analytical.
+The default offload target is the **Mistral draft worker** (`codestral-latest`) for
+prose → structured table/summary and small self-contained code drafts, always reviewed. The
+local Qwen worker remains as the offline fallback only. Deterministic extraction/enumeration/sort
+is **never** an LLM task — `grep`/`awk`/`python` only — because both the local 9B model and
+codestral-latest fail it while deterministic tools get it right at zero cost.
+
+The 2026-08-25 finding stands and is now generalized: the bottleneck is that cheap models do not
+reliably follow multi-clause deterministic instructions, not the specific model. The cloud
+escalation path via `delegate` covers everything analytical.
 
 ## Data minimization (hard rule)
 
@@ -150,9 +163,9 @@ modify anything; you always apply the result yourself.
 
 ## Escalation to a stronger cloud model
 
-`delegate` also accepts a concrete cloud model id (e.g. `<your-cloud-model>`) for a rare,
+`delegate` also accepts a concrete OpenCode Go model id (e.g. `gpt-5.6-luna`) for a rare,
 justified escalation when a single subtask needs reasoning beyond the primary. `model` is a
-concrete id — `draft`, `local`, or a cloud catalog id — never a dispatch tier (`low…max`) or a
+concrete id — `mistral`, `local`, or a catalog id — never a dispatch tier (`low…max`) or a
 `miner-*` name. List targets with `delegate` and no `model`.
 
 ## Failure handling

@@ -1,6 +1,6 @@
 ---
 name: security-review
-description: Perform rigorous security reviews of source code, configurations, infrastructure and dependencies using evidence-based adversarial analysis. Identify vulnerabilities, security weaknesses, trust-boundary violations and supply-chain risks. Evidence over speculation, asymmetry-aware severity, deterministic engines never trusted to be predicted, and private data that never leaves a repo.
+description: Perform rigorous security reviews of source code, configurations, infrastructure and dependencies using evidence-based adversarial analysis. Identify vulnerabilities, security weaknesses, trust-boundary violations and supply-chain risks. Encodes Stefano Conter's method — evidence over speculation, asymmetry-aware severity, deterministic engines never trusted to be predicted, and private data that never leaves a repo.
 summary: adversarial security reviews, asymmetry-aware severity
 ---
 
@@ -10,9 +10,11 @@ summary: adversarial security reviews, asymmetry-aware severity
 
 Security reasoning is **CLOUD**. Vulnerability assessment, threat modeling, authentication/
 authorization design, cryptographic decisions, security architecture and incident-response
-decisions are owned by the cloud primary agent. The local worker may only assist
-with mechanical extraction (indicators, permission enumeration, log parsing, config-value
-normalization) — never the final security judgment.
+decisions are owned by the cloud primary agent. Indicator extraction, permission enumeration, log
+parsing and config-value normalization are DETERMINISTIC work: they go to `grep`/`awk`/`python`,
+never to a worker (AGENTS.md §11.3 — a worker is empirically unreliable at exactly this, and in a
+security review a missed indicator is the whole failure). A worker never touches the final
+judgment either.
 
 ## Purpose
 
@@ -65,7 +67,8 @@ attacker model merely to increase severity.
 ## Asymmetry and severity in enforcement systems
 
 Where the system produces **enforcement artefacts** (firewall blocks, security controls,
-alerts), the costs of error are not symmetric (a useful lens for any CI/CTI/automation project):
+alerts), the costs of error are not symmetric (ThreatSoup's governing principle, and a useful
+lens for any CI/CTI/automation project):
 
 - A **missed** indicator may cost an exposure the operator already had.
 - A **wrong** (false-positive) control can take a system offline in production for something it

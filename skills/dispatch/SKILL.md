@@ -18,7 +18,7 @@ worker can cost more than the tier it saves — that is the only legitimate reas
 inline, and it must be stated, not used as an alibi to run everything on the main loop.
 
 The orchestrator is the **cloud primary** agent. The `miner-*` workers run **cloud** models; the
-local model is **not** a dispatch worker — it is the bounded offload target of the
+local MTPLX/Qwen model is **not** a dispatch worker — it is the bounded offload target of the
 `delegate` tool, not a rung on this tier ladder.
 
 ## dispatch vs delegate (do not confuse)
@@ -27,10 +27,11 @@ local model is **not** a dispatch worker — it is the bounded offload target of
   run the mechanical/routine slices on parallel `miner-*` cloud workers (via the `subagent`
   tool), keeping the correctness-critical core inline.
 - **`delegate` (the tool)** = offload **ONE** bounded, mechanically-verifiable subtask to a
-  worker (default the draft worker; `local` is the offline fallback) and validate the result inline.
+  worker (default the Mistral `codestral-latest` draft worker; `local` Qwen is the offline
+  fallback) and validate the result inline.
 
 When you need one bounded draft subtask done (prose → table, a small self-contained code
-function), use `delegate` to the draft worker — do not spin up a dispatch plan. A
+function), use `delegate` to the Mistral draft worker — do not spin up a dispatch plan. A
 parse/extract/enumerate need is **not** a `delegate` job at all: `grep`/`awk`/`python` do it
 deterministically. When the task needs decomposition into parallel work units, use `dispatch` —
 do not cram it into one `delegate` call. They are different mechanisms for different situations,
@@ -60,25 +61,26 @@ An explicit effort request from the user overrides the rubric.
 
 ## Tier rubric
 
-| Worker | Effort | Thinking level | Model (pin in agents/miner-*.md) | Use for |
-|--------|--------|----------------|----------------------------------|---------|
-| `miner-low` | low | `minimal` | `<your-fast-model>` | pure routine, retrieval, extraction, reformatting, mechanical grep/lookup |
-| `miner-medium` | medium | `medium` | `<your-mid-model>` | straightforward changes, porting, docs, mid work not correctness-critical |
-| `miner-high` | high | `high` | `<your-primary-model>` | code that must be correct (business logic, edge cases, error paths, parsing) — the default for real code |
-| `miner-xhigh` | xhigh | `xhigh` | `<your-review-model>` | adversarial review, audit, cross-source consistency, numeric accuracy, security |
-| `miner-max` | max | `max` | `<your-max-model>` | the longest, highest-stakes reasoning; only when no cheaper tier is sufficient |
+| Worker | Effort | Thinking level | Model (current) | Use for |
+|--------|--------|----------------|-----------------|---------|
+| `miner-low` | low | `minimal` | `deepseek-v4-flash` | pure routine, retrieval, extraction, reformatting, mechanical grep/lookup |
+| `miner-medium` | medium | `medium` | `deepseek-v4-flash` | straightforward changes, porting, docs, mid work not correctness-critical |
+| `miner-high` | high | `high` | `gpt-5.6-luna` | code that must be correct (business logic, edge cases, error paths, parsing) — the escalation tier for real code |
+| `miner-xhigh` | xhigh | `xhigh` | `deepseek-v4-pro` | adversarial review, audit, cross-source consistency, numeric accuracy, security |
+| `miner-max` | max | `max` | `glm-5.2` | the longest, highest-stakes reasoning; only when no cheaper tier is sufficient |
 
 ## Tiers are abstract — models are concrete
 
 A **tier** (`low`…`max`) is an abstract *difficulty / routing class*. A **model** is a concrete
-provider id (`<your-fast-model>`, `<your-mid-model>`, …). The rubric maps a tier to a `miner-*`
-**worker**, and each worker's frontmatter (`agents/miner-*.md`) pins the concrete `model:` to
-run. You route by tier; the worker file supplies the model.
+provider id (`deepseek-v4-flash`, `kimi-k2.7-code`, `deepseek-v4-pro`, `qwen3.8-max`, `gpt-5.6-luna`, …).
+The rubric maps a tier to a `miner-*` **worker**, and each worker's frontmatter
+(`agents/miner-*.md`) pins the concrete `model:` to run. You route by tier; the worker file
+supplies the model.
 
 Never hand a tier name to the `delegate` tool. `delegate` requires a concrete model id (list
-them with `delegate` and no `model`). `high` → `miner-high` is a *worker* name, not a model id.
-The model ids in this table are placeholders — edit `agents/miner-*.md` to pin your own, and
-trust the worker file, not memory.
+them with `delegate` and no `model`). `high` → `miner-high` is a *worker* name, not a model id;
+`gpt-5.6-luna` is the model id that `miner-high` pins (and `deepseek-v4-pro` is `miner-xhigh`'s). The model ids in this table
+are current pins — verify against `agents/miner-*.md`, not from memory.
 
 ## Dispatch rules
 
@@ -120,8 +122,8 @@ hardest reasoning       -> miner-max
 The `miner-*` ladder classifies by *difficulty*. A **domain worker** classifies by *bounded
 domain* with self-contained output: it carries a distilled skill as its system prompt and a
 model/thinking level tuned to that domain. Use one only when the task is well-bounded and needs
-no live session/tool state — never for tool-heavy, tightly-coupled work (e.g. smart-home control
-stays inline; a cold worker lacks the live MCP tools and charged skill context).
+no live session/tool state — never for tool-heavy, tightly-coupled work (e.g. Home Assistant
+control stays inline; a cold worker lacks the live MCP tools and charged skill context).
 
 Current domain workers:
 - `repo-builder` — repository scaffolding / publication hygiene (LICENSE, README, NOTICE.md,

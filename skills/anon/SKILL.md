@@ -291,7 +291,10 @@ nome in un modo che il dizionario non copre: dichiaralo (`entities.txt`) e ripet
   Rimedio: dichiarali nel dizionario — `HOST|db.intranet.io` — che li copre come qualunque altra
   entità (è il motivo per cui il dizionario esiste).
 - **PDF malformati**: la firma `%PDF-` è riconosciuta entro i 1024 byte ammessi dalla specifica (più gli 8 byte della firma). Un PDF con preambolo più lungo **e** stream compressi non viene classificato come documento — resta però coperto dalla scansione testuale finché il contenuto sensibile è in chiaro. Caso molto raro.
-- **`bash` non è coperto in modalità default**: `cat`/`rg`/pipe possono far passare valori
+- **Eccezione: `~/.anon/maps/` è bloccato anche via `bash`.** L'hard-block legge il testo del comando
+  in ogni modalità diversa da `off`, quindi `cat ~/.anon/maps/...` viene rifiutato — è il percorso
+  dove stanno i valori reali. Il resto dell'output di `bash` resta non coperto in modalità default:
+  `cat`/`rg`/pipe possono far passare valori
   reali. Usa `--anon-guard=all` per estendere il controllo all'output di `bash`/`grep` (più
   rumoroso: l'output di shell è pieno di email/IP non segreti). Il flusso corretto resta
   anonimizzare *prima*, non sperare nel blocco.
