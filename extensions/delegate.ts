@@ -341,11 +341,14 @@ function buildBrief(params: {
 // ---------------------------------------------------------------------------
 
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
-  // Test seam: the spawn/abort/timeout paths cannot be exercised against a real worker (that costs
-  // money and needs a provider), and a path nobody drives is a path that breaks silently. This adds
-  // no new authority — the extension already runs with the user's permissions, and PATH already
-  // decides what `pi` means — it only names the choice so a test can make it.
-  const override = process.env.PI_DELEGATE_SPAWN;
+  // TEST-ONLY seam. It is a real, if small, addition of surface: with this variable set, `delegate`
+  // runs that command instead of `pi`. It is not reachable from repository content (env vars are set
+  // at process start, and a project extension already runs with the user's permissions), and
+  // `shell: false` limits it to substituting one binary — but it is an escape hatch, so it is named
+  // as one and it exists because the spawn failure paths have no other way to be driven: a real
+  // worker costs money and needs a provider, and an untested failure path is where a crash gets
+  // reported as success.
+  const override = process.env.PI_DELEGATE_TEST_SPAWN;
   if (override) return { command: override, args };
   const currentScript = process.argv[1];
   const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");

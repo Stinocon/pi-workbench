@@ -7,7 +7,7 @@
  * was reported as "a timeout", and an aborted delegation left the worker running to its own timeout.
  * None of it was reachable from `test-delegate.mjs`, which never spawns anything.
  *
- * The worker here is a STUB, not a model: `PI_DELEGATE_SPAWN` (a test seam in `getPiInvocation`)
+ * The worker here is a STUB, not a model: `PI_DELEGATE_TEST_SPAWN` (a test seam in `getPiInvocation`)
  * points the spawn at a small wrapper that ignores the pi arguments and dies in a controlled way.
  * No network, no provider, no cost.
  *
@@ -99,7 +99,7 @@ const jiti = createJiti(import.meta.url, {
 
 // Must be set BEFORE the module is loaded: getPiInvocation reads it at spawn time, and the module is
 // loaded here anyway, so either order works — but setting it first is unambiguous.
-process.env.PI_DELEGATE_SPAWN = wrapper;
+process.env.PI_DELEGATE_TEST_SPAWN = wrapper;
 
 const mod = await jiti.import(EXT, { default: false });
 const runWorker = mod.runWorker;

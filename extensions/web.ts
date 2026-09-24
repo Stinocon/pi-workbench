@@ -194,13 +194,27 @@ function requestPinned(target: Pinned, maxBytes: number): Promise<PinnedResponse
 				signal: AbortSignal.timeout(15000),
 			},
 			(res) => {
-				const encoding = String(res.headers["content-encoding"] ?? "").toLowerCase();
+				const encodings = String(res.headers["content-encoding"] ?? "")
+					.toLowerCase()
+					.split(",")
+					.map((s) => s.trim())
+					.filter(Boolean);
+				// Stacked encodings (`gzip, br`) need the decoders applied in reverse order. Picking one and
+				// returning its output as text would hand the caller bytes that were never fully decoded —
+				// something that looks like text and is not.
+				if (encodings.length > 1) {
+					res.destroy();
+					fail(new Error(`content-encoding multipla non supportata (${encodings.join(", ")})`));
+					return;
+				}
+				const encoding = encodings[0] ?? "";
 				let stream: NodeJS.ReadableStream = res;
 				try {
-					if (encoding.includes("br")) stream = res.pipe(createBrotliDecompress());
-					else if (encoding.includes("gzip")) stream = res.pipe(createGunzip());
-					else if (encoding.includes("deflate")) stream = res.pipe(createInflate());
+					if (encoding === "br") stream = res.pipe(createBrotliDecompress());
+					else if (encoding === "gzip" || encoding === "x-gzip") stream = res.pipe(createGunzip());
+					else if (encoding === "deflate") stream = res.pipe(createInflate());
 				} catch (e) {
+					res.destroy();
 					fail(e instanceof Error ? e : new Error(String(e)));
 					return;
 				}
@@ -216,7 +230,13 @@ function requestPinned(target: Pinned, maxBytes: number): Promise<PinnedResponse
 					}
 					chunks.push(chunk);
 				});
-				stream.on("error", (e: Error) => fail(e));
+				stream.on("error", (e: Error) => {
+					// Destroy the response too. Settling the promise alone left the raw socket streaming into a
+					// decoder that had already given up, until the 15 s timeout — a socket a hostile server
+					// holds open for free, on every fetch.
+					res.destroy();
+					fail(e);
+				});
 				stream.on("end", () =>
 					done({ status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks) }),
 				);

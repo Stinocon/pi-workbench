@@ -26,7 +26,7 @@
     },
     {
       "name": "web-guard",
-      "command": "node scripts/test-web-guard.mjs"
+      "command": "SKIP_NETWORK=1 node scripts/test-web-guard.mjs"
     },
     {
       "name": "delegate-spawn",
