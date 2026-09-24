@@ -99,22 +99,36 @@ if (files.length === 0) {
 
 const base = target ? target : REPO;
 let parseErrors = 0;
+let loadErrors = 0;
 for (const f of files) {
   try {
     jiti(f);
   } catch (err) {
     const msg = String((err && err.message) || err).split("\n")[0];
-    if (/parse|syntax/i.test(msg)) {
+    if (/parse|syntax|unexpected token/i.test(msg)) {
       console.error(`  PARSE  ${path.relative(base, f)}  ->  ${msg.slice(0, 120)}`);
       parseErrors++;
+      continue;
     }
-    // Import-resolution and other runtime errors are ignored: only parse errors fail.
+    // A module that cannot be RESOLVED is environmental: this checker runs outside pi's runtime, so
+    // a dependency pi provides may simply not be on this path. Ignored, deliberately.
+    if (/cannot find module|module not found|failed to resolve|err_module_not_found|is not exported|does not provide an export/i.test(msg)) {
+      continue;
+    }
+    // Anything else means the module THREW while being loaded — a ReferenceError, a null property, a
+    // deliberate `throw`. The old version ignored these (`only parse errors fail`), so an extension
+    // that aborts pi at startup passed the preflight: the check ran, printed nothing, and exited 0.
+    console.error(`  LOAD   ${path.relative(base, f)}  ->  ${msg.slice(0, 120)}`);
+    loadErrors++;
   }
 }
 
-if (parseErrors > 0) {
-  console.error(`check-extensions: ${parseErrors} extension(s) have parse errors — pi would fail to start.`);
+if (parseErrors > 0 || loadErrors > 0) {
+  const parts = [];
+  if (parseErrors) parts.push(`${parseErrors} parse error(s)`);
+  if (loadErrors) parts.push(`${loadErrors} that throw while loading`);
+  console.error(`check-extensions: ${parts.join(" and ")} — pi would fail to start.`);
   process.exit(1);
 }
-if (!quiet) console.log(`check-extensions: ${files.length} extension file(s) parse clean`);
+if (!quiet) console.log(`check-extensions: ${files.length} extension file(s) parse and load clean`);
 process.exit(0);

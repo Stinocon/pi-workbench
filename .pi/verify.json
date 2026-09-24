@@ -29,6 +29,10 @@
       "command": "SKIP_NETWORK=1 node scripts/test-web-guard.mjs"
     },
     {
+      "name": "declarative-hooks",
+      "command": "node scripts/test-declarative-hooks.mjs"
+    },
+    {
       "name": "delegate-spawn",
       "command": "node scripts/test-delegate-spawn.mjs"
     }

@@ -210,14 +210,32 @@ function requestPinned(target: Pinned, maxBytes: number): Promise<PinnedResponse
 				const encoding = encodings[0] ?? "";
 				let stream: NodeJS.ReadableStream = res;
 				try {
-					if (encoding === "br") stream = res.pipe(createBrotliDecompress());
-					else if (encoding === "gzip" || encoding === "x-gzip") stream = res.pipe(createGunzip());
-					else if (encoding === "deflate") stream = res.pipe(createInflate());
+					if (encoding === "" || encoding === "identity") {
+						/* no decoder: the body is already what the caller receives */
+					} else if (encoding === "br" || encoding === "brotli") {
+						stream = res.pipe(createBrotliDecompress());
+					} else if (encoding === "gzip" || encoding === "x-gzip") {
+						stream = res.pipe(createGunzip());
+					} else if (encoding === "deflate") {
+						stream = res.pipe(createInflate());
+					} else {
+						// `zstd`, `compress`, and anything a future server invents. Returning the raw bytes
+						// would hand the caller compressed data dressed as text; refusing says so.
+						res.destroy();
+						fail(new Error(`content-encoding non supportata: ${encoding}`));
+						return;
+					}
 				} catch (e) {
 					res.destroy();
 					fail(e instanceof Error ? e : new Error(String(e)));
 					return;
 				}
+				// Errors on the RESPONSE itself (a mid-body ECONNRESET, a truncated stream) are not
+				// forwarded by `pipe`: without this handler the promise waited out the 15 s timeout.
+				res.on("error", (e: Error) => {
+					res.destroy();
+					fail(e);
+				});
 				const chunks: Buffer[] = [];
 				let total = 0;
 				stream.on("data", (chunk: Buffer) => {

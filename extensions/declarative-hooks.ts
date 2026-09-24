@@ -5,7 +5,7 @@
  * spirit of Codex Hooks. Reads ~/.pi/agent/hooks.json and runs each hook's
  * command through `/bin/sh -c`.
  *
- * Config format (see hooks.example.json at the repo root):
+ * Config format (see ~/.pi/agent/hooks.example.json):
  *   {
  *     "hooks": [
  *       { "event": "tool_call", "tool": "bash", "command": "..." },
@@ -15,9 +15,17 @@
  *   }
  *
  * Events:
- *   tool_call             — non-zero exit blocks the tool (pre-execution)
- *   session_before_compact — non-zero exit cancels compaction
+ *   tool_call             — non-zero exit blocks the tool (pre-execution), IF the hook declares
+ *                           `blockOnFailure: true`; otherwise a failure is reported and the call
+ *                           proceeds
+ *   session_before_compact — same: cancels only when it declares it, and only on a non-zero exit
  *   tool_execution_start / tool_execution_end / before_agent_start — side effects (audit/log)
+ *
+ * WHY `blockOnFailure` EXISTS. A hook runs with a 10 s timeout, and a timeout (or a crash) used to
+ * be treated exactly like a deliberate non-zero exit: it blocked the tool. So a LOGGING hook — the
+ * shipped `hooks.json`, whose whole job is appending a line — could stop work on a slow or full
+ * disk, or on a path that is not a regular file. Blocking is now something a hook opts into, and a
+ * hook that only records cannot block anything however it fails.
  *
  * Script contract: run as `/bin/sh -c <command> pi-hook <event> <tool> <input>`.
  * Inside the script: $1 = event, $2 = tool name ("" if none), $3 = JSON tool
@@ -38,6 +46,9 @@ interface HookSpec {
 	event: string;
 	tool?: string;
 	command: string;
+	/** Opt in to blocking: a non-zero exit (or a timeout) refuses the tool call / cancels the
+	 *  compaction. Absent means the hook only observes — it can fail freely and never block. */
+	blockOnFailure?: boolean;
 }
 
 interface HooksConfig {
@@ -87,7 +98,7 @@ async function runHook(
 			{ timeout: HOOK_TIMEOUT_MS },
 		);
 	} catch (error) {
-		return { blocked: true, reason: `hook failed to run: ${String(error)}` };
+		return failure(spec, `hook failed to run: ${String(error)}`);
 	}
 
 	if (result.code === 0) return { blocked: false };
@@ -96,7 +107,18 @@ async function runHook(
 		result.stderr.trim() ||
 		result.stdout.trim().split("\n").filter(Boolean).pop() ||
 		`hook exited with code ${result.code}`;
-	return { blocked: true, reason };
+	return failure(spec, reason);
+}
+
+/**
+ * A hook that did not exit 0. Only a hook that declared `blockOnFailure` gets to refuse the action;
+ * anything else is reported to the operator and the call proceeds. This is the difference between a
+ * guard (which must fail closed) and a logger (which must never stand in the way).
+ */
+function failure(spec: HookSpec, reason: string): { blocked: boolean; reason?: string } {
+	if (spec.blockOnFailure) return { blocked: true, reason };
+	console.error(`[declarative-hooks] ${spec.event} hook (observer) failed: ${reason}`);
+	return { blocked: false };
 }
 
 export default function (pi: ExtensionAPI) {

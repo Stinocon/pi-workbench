@@ -10,26 +10,21 @@
 # intentional WIP; reconciling them is a deliberate, gate-approved decision. The
 # point of this scanner is to make "content drift" observable, not to auto-fix it.
 #
-# Scope default: git repositories under $HOME, at depth <= 4 (git-managed, GitHub-publishable
-# repos normally live under a tree like ~/sviluppo/github.com/<owner>/).
+# Scope default: ~/sviluppo/github.com/Stinocon (git-managed, GitHub-publishable).
 # Override with DRIFT_BASE, or pass explicit repo paths as arguments.
 set -uo pipefail
 
-BASE="${DRIFT_BASE:-$HOME}"
+BASE="${DRIFT_BASE:-$HOME/sviluppo/github.com/Stinocon}"
 
 declare -a REPOS=()
 if [ "$#" -gt 0 ]; then
 	REPOS=("$@")
 else
-	# A one-level "$BASE/*/" scan finds essentially nothing in a normal layout, which made the
-	# default scope useless. Walk a modest depth and skip the heavy/derived trees.
-	while IFS= read -r g; do
-		[ -n "$g" ] && REPOS+=("$(dirname "$g")")
-	done < <(
-		find "$BASE" -maxdepth 4 -type d -name .git \
-			-not -path "*/node_modules/*" -not -path "*/.cache/*" \
-			-not -path "*/Library/*" -not -path "*/.Trash/*" 2>/dev/null
-	)
+	for d in "$BASE"/*/; do
+		[ -d "$d" ] || continue
+		[ -d "$d/.git" ] || continue   # skip non-git dirs (e.g. ~/sviluppo/homeassistant)
+		REPOS+=("${d%/}")
+	done
 fi
 
 # Expanding an empty array under `set -u` is an "unbound variable" error on bash 3.2 (macOS),
@@ -65,7 +60,7 @@ for repo in "${REPOS[@]}"; do
 		# auto upstream for default push target, if any
 		tgt=$(git -C "$repo" rev-parse --abbrev-ref '@{push}' 2>/dev/null) && {
 			ahead=$(git -C "$repo" rev-list --count "@{push}..HEAD" 2>/dev/null || echo 0)
-		} || nousp=1
+		} || { nousp=1; ahead="?"; }
 	fi
 
 	flag="OK"
