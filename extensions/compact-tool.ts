@@ -16,8 +16,9 @@
  * discard this extension.
  *
  * Limitation: `ctx.compact()` is wired only in interactive TUI mode. In
- * print / json / rpc modes it is a no-op, so the tool schedules but nothing
- * actually compacts.
+ * print / json / rpc modes it is a no-op, so `execute` returns "not available in
+ * this mode" and schedules nothing — reporting a scheduling that never fires
+ * would leave the agent believing context was freed.
  */
 
 import { Type } from "@earendil-works/pi-ai";
@@ -41,7 +42,21 @@ const compactTool = defineTool({
 			}),
 		),
 	}),
-	async execute(_toolCallId, params, _signal, _onUpdate) {
+	async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+		// `ctx.compact()` is wired only in interactive TUI mode; in rpc/json/print it is a no-op.
+		// Scheduling anyway would report success for something that never runs, leaving the agent to
+		// believe context was freed.
+		if (ctx.mode !== "tui") {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Compaction is not available in ${ctx.mode} mode (it is wired for interactive TUI only) — nothing was scheduled.`,
+					},
+				],
+				details: { scheduled: false, reason: "mode" },
+			};
+		}
 		pending = true;
 		instructions = params.instructions;
 		return {

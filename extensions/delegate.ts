@@ -275,6 +275,10 @@ function screenBrief(brief: string): ScreenResult {
   return { refused: false, reason: null, redacted, redactionCount };
 }
 
+// Exported for a regression test: the screen is not reachable through the tool without spawning a
+// real worker, which is how a `pwd=` false positive survived here unnoticed.
+export { screenBrief, looksLikeNonSecretValue };
+
 // ---------------------------------------------------------------------------
 // Brief construction — only the caller's explicit fields reach the cloud model
 // ---------------------------------------------------------------------------

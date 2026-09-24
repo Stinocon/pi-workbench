@@ -190,8 +190,9 @@ function writeFixtureHome() {
   const clean = path.join(tmp, "note.md");
   fs.writeFileSync(clean, "Vedi anon.py, deanon.py, README.md. Contatti: user@example.com, 192.0.2.10.\n");
   const big = path.join(tmp, "big.log");
-  fs.writeFileSync(big, "x");
-  fs.truncateSync(big, 9 * 1024 * 1024);
+  // Must exceed MAX_CHECK_BYTES (12 MB) and be TEXT: a NUL-filled file is refused by the engine's
+  // binary sniff whatever its size, which made the old 9 MB / NUL fixture pass for the wrong reason.
+  fs.writeFileSync(big, "a".repeat(13 * 1024 * 1024));
   // A .docx is a ZIP: Pi's read tool decodes non-image files as UTF-8 text, so an un-scannable
   // container must be blocked rather than reported clean.
   const docx = path.join(tmp, "verbale.docx");
@@ -244,7 +245,7 @@ async function main() {
     !!blocked && !/acme\.it|Mario Rossi|10\.42\.7\.19/.test(blocked.reason),
   );
   check("read: clean file is allowed", (await readCall(fx.clean)) === undefined);
-  check("read: >8MB fails CLOSED", (await readCall(fx.big))?.block === true);
+  check("read: a file above the size cap fails CLOSED", (await readCall(fx.big))?.block === true);
   check("read: maps dir is hard-BLOCKED", (await readCall(path.join(fx.maps, "dummy.map.json")))?.block === true);
 
   const binDoc = await readCall(fx.docx);
@@ -267,6 +268,8 @@ async function main() {
   check("bash: ~/.anon/maps is BLOCKED", (await bashCall("ls ~/.anon/maps"))?.block === true);
   check("bash: a glob into maps is BLOCKED", (await bashCall("cat ~/.anon/maps/*.json"))?.block === true);
   check("bash: only MENTIONING the path is not blocked", (await bashCall('rg -n "\\.anon/maps" docs/')) === undefined);
+  check("bash: a trailing space does not evade the block", (await bashCall("ls ~/.anon/maps "))?.block === true);
+  check("bash: cd into maps then read is BLOCKED", (await bashCall("cd ~/.anon/maps && cat dummy.map.json"))?.block === true);
   check("bash: an unrelated command is not blocked", (await bashCall("ls -la /tmp")) === undefined);
 
   // The size gate must not override the allowlist: the block message tells the operator to declare

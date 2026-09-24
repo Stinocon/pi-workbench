@@ -77,6 +77,11 @@ const AUTO_TIMEOUT_MS = 120_000;
 // margin, and a timeout now BLOCKS the file instead of switching the guard off (see `timedOut`).
 // Larger files stay fail-closed: never silently skipped.
 const MAX_CHECK_BYTES = 12 * 1024 * 1024;
+// Above this size the guard does not even PROBE the allowlist: deciding "allowed" means handing the
+// file to the engine, and for plain text the engine reads it whole. A bounded probe keeps the remedy
+// the block message prints working for a 13 MB file without turning a multi-gigabyte one into a
+// memory problem. Past this bound the answer is the fail-closed one, on size alone.
+const MAX_PROBE_BYTES = 64 * 1024 * 1024;
 const CACHE_LIMIT = 512;
 
 interface CheckResult {
@@ -141,8 +146,11 @@ const MAPS_REAL = realPath(MAPS_DIR);
  * not in a path, so `cat ~/.anon/maps/<id>.map.json` reached the real values with the hard block
  * never firing.
  *
- * The boundary rule is a trailing `/` or end of string: `~/.anon/maps/x.json` and `ls ~/.anon/maps`
- * are paths into the directory, while a documentation search for the string `.anon/maps"` is not.
+ * The boundary rule is a trailing non-word character: `~/.anon/maps/x.json`, `ls ~/.anon/maps` and
+ * `ls ~/.anon/maps ` all reach the directory (an earlier version accepted only `/` or end-of-string,
+ * so one trailing space walked straight through), while `~/.anon/maps-backup` does not. The relative
+ * spelling `.anon/maps` is deliberately absent: it is what a grep for the string inside a document
+ * looked like, and dropping it removes that false positive.
  */
 function referencesMapsDir(text: string, cwd: string): boolean {
 	const spellings = [
@@ -152,17 +160,30 @@ function referencesMapsDir(text: string, cwd: string): boolean {
 		"${HOME}/.anon/maps",
 		"$ANON_HOME/maps",
 		"${ANON_HOME}/maps",
-		".anon/maps",
 		path.resolve(cwd, ".anon", "maps"),
 	];
 	for (const s of spellings) {
-		const idx = text.indexOf(s);
-		if (idx < 0) continue;
-		const after = text[idx + s.length];
-		if (after === undefined || after === "/") return true;
+		// EVERY occurrence, not just the first: a command may mention the path harmlessly early and then
+		// actually read it later in the same line.
+		let from = 0;
+		for (;;) {
+			const idx = text.indexOf(s, from);
+			if (idx < 0) break;
+			const after = text[idx + s.length];
+			if (after === undefined || !/[\w-]/.test(after)) return true;
+			from = idx + s.length;
+		}
 	}
 	return false;
 }
+
+/* Declared limit: this scans the COMMAND TEXT, so it cannot be complete. Indirection the text does
+ * not show through — `M=~/.anon; cat $M/maps/x` — is not caught, and neither is a symlink. The real
+ * boundary remains the `path`-based block above, which resolves the target with realpath.
+ *
+ * The cost of a false positive is a blocked command whose reason names the path: visible, and
+ * re-phrasable. The cost of a false negative is the real values in the model context. That asymmetry
+ * is why the boundary is loose rather than exact. */
 
 function insideMapsDir(target: string): boolean {
 	for (const candidate of [path.resolve(target), realPath(target)]) {
@@ -315,21 +336,32 @@ async function checkFile(target: string, ctx: GuardCtx, extraGlobs: string[]): P
 	// that is no longer clean — a fail-open with no visible signal. ctime cannot be set from
 	// userspace.
 	if (stat.size > MAX_CHECK_BYTES) {
-		// Ask the engine for the allowlist verdict before refusing on size: `is_allowed` runs BEFORE
-		// any scan, so an allowlisted path answers immediately. Without this the remedy the block
-		// message prints — "declare the path in ~/.anon/allow.txt if it is legitimately public" — was
-		// a dead end for every file past this size, because the size gate returned first.
-		const allowArgs = extraGlobs.flatMap((glob) => [`--allow-glob=${glob}`]);
-		const probe = await runScript(ANON_PY, [target, "--check", "--json", ...allowArgs], ALLOW_PROBE_TIMEOUT_MS);
-		if (!probe.timedOut && probe.code === 0) {
-			try {
-				const parsed = JSON.parse(probe.stdout) as { allowed?: boolean };
-				if (parsed.allowed === true) return { sensitive: false, total: 0, types: {}, findings: [] };
-			} catch {
-				/* no verdict in the output: fall through to blocking, never to allowing */
+		// Ask the engine for the allowlist verdict before refusing on size: `is_allowed` runs BEFORE any
+		// scan, so an allowlisted path answers immediately. Without this the remedy the block message
+		// prints — "declare the path in ~/.anon/allow.txt if it is legitimately public" — was a dead end
+		// for every file past this size, because the size gate returned first. Bounded, because a probe
+		// hands the file to the engine and the engine reads plain text whole.
+		if (stat.size <= MAX_PROBE_BYTES) {
+			const allowArgs = extraGlobs.flatMap((glob) => [`--allow-glob=${glob}`]);
+			const probe = await runScript(ANON_PY, [target, "--check", "--json", ...allowArgs], ALLOW_PROBE_TIMEOUT_MS);
+			if (!probe.timedOut && probe.code === 0) {
+				try {
+					const parsed = JSON.parse(probe.stdout) as { allowed?: boolean };
+					if (parsed.allowed === true) {
+						const verdict: CheckResult = { sensitive: false, total: 0, types: {}, findings: [] };
+						if (cache.size >= CACHE_LIMIT) cache.clear();
+						cache.set(target, { key, result: verdict }); // else the probe re-runs on every read
+						return verdict;
+					}
+				} catch {
+					/* no verdict in the output: fall through to blocking, never to allowing */
+				}
 			}
 		}
-		return { sensitive: true, total: 1, types: {}, findings: [], toolarge: true };
+		const blocked: CheckResult = { sensitive: true, total: 1, types: {}, findings: [], toolarge: true };
+		if (cache.size >= CACHE_LIMIT) cache.clear();
+		cache.set(target, { key, result: blocked });
+		return blocked;
 	}
 	if (engineFailed) return null;
 

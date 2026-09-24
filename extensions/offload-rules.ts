@@ -119,10 +119,12 @@ export default function (pi: ExtensionAPI) {
       const exts = (rule.criticalExtensions ?? DEFAULT_CRITICAL).join(", ");
       const review = (rule.reviewAgents ?? DEFAULT_REVIEW_AGENTS)[0] ?? "miner-xhigh";
       lines.push(
-        "1. adversarial-review (ENFORCED by the harness, not advisory): after you modify a critical file",
+        "1. adversarial-review (enforced by the harness, not advisory): after you modify a critical file",
         `   (${exts}), an adversarial review by a DIFFERENT model must run before the task is done.`,
         `   Comply proactively: subagent(agent="${review}", task="adversarially review this diff").`,
-        '   If you skip it and a critical file changed, the harness blocks the "done" claim.',
+        pi.getFlag("offload-enforce") === true
+          ? "   If you skip it, the harness sends the requirement back as a user message, which always triggers a turn — you cannot end the task unreviewed."
+          : "   If you skip it, the harness flags the run to the user (report mode: it notifies, it cannot block the end of the run).",
       );
     }
     if (directives.length > 0) {
@@ -145,20 +147,44 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("tool_call", (event) => {
     if (!rule) return;
+    if (event.toolName !== "write" && event.toolName !== "edit") return;
     const exts = (rule.criticalExtensions ?? DEFAULT_CRITICAL).map((e) => e.toLowerCase());
-    const reviewAgents = rule.reviewAgents ?? DEFAULT_REVIEW_AGENTS;
-
-    if (event.toolName === "write" || event.toolName === "edit") {
-      const p = pathOf(event.input);
-      if (p && isCriticalPath(p, exts)) pendingReview = true;
-    } else if (event.toolName === "subagent") {
-      if (matchesReview(agentNames(event.input), reviewAgents)) {
-        pendingReview = false;
-        reminders = 0; // review discharges the obligation; reset the reminder budget
-      }
-    }
+    const p = pathOf(event.input);
+    if (p && isCriticalPath(p, exts)) pendingReview = true;
   });
 
+  // Discharge on the RESULT, not on the call: a review subagent that failed or was aborted has not
+  // reviewed anything. `event.isError` is not a usable success signal here — the subagent tool
+  // reports failure by RETURNING `isError` inside its own result rather than throwing — so the
+  // per-agent results are read, and the obligation stands unless every review completed cleanly.
+  pi.on("tool_result", (event) => {
+    if (!rule || !pendingReview) return;
+    if (event.toolName !== "subagent") return;
+    const reviewAgents = rule.reviewAgents ?? DEFAULT_REVIEW_AGENTS;
+    if (!matchesReview(agentNames(event.input), reviewAgents)) return;
+
+    const details = (event as { details?: { results?: Array<{ exitCode?: number; stopReason?: string }> } })
+      .details;
+    const results = details?.results;
+    // "Could not establish success" counts as not reviewed. The failure mode of the other choice is
+    // a task declared done with no review at all, which is the thing this rule exists to prevent.
+    const succeeded =
+      Array.isArray(results) &&
+      results.length > 0 &&
+      results.every(
+        (r) => (r.exitCode ?? 1) === 0 && r.stopReason !== "error" && r.stopReason !== "aborted",
+      );
+    if (!succeeded) return;
+
+    pendingReview = false;
+    reminders = 0; // review discharges the obligation; reset the reminder budget
+  });
+
+  // `agent_settled` discards its handler's return value, so enforcement cannot ride on the return.
+  // `pi.sendUserMessage` is documented as always triggering a turn — that is what actually makes the
+  // review happen. (An `agent_before_settle` continuation does NOT work: the SDK rejects
+  // `continue: true` when the run ended on an assistant message with nothing queued, which is exactly
+  // the "I am done" case this rule targets.)
   pi.on("agent_settled", async (_event, ctx) => {
     if (!rule || !pendingReview) return;
     const message = rule.message ?? DEFAULT_MESSAGE;
@@ -174,9 +200,13 @@ export default function (pi: ExtensionAPI) {
       return;
     }
     reminders += 1;
-    pi.sendUserMessage(
-      `[offload-rules] ${message}\n\n` +
-        'Run subagent(agent="miner-xhigh", task="adversarially review this change") now, or state explicitly why the review is waived.',
-    );
+    const review = (rule.reviewAgents ?? DEFAULT_REVIEW_AGENTS)[0] ?? "miner-xhigh";
+    setTimeout(() => {
+      pi.sendUserMessage(
+        `[offload-rules] ${message}\n\n` +
+          `Run subagent(agent="${review}", task="adversarially review this change") now, ` +
+          "or state explicitly why the review is waived.",
+      );
+    }, 0);
   });
 }

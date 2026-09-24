@@ -170,7 +170,21 @@ export default function (pi: ExtensionAPI) {
 			}
 			const timeoutMs = found.config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 			const results: GateResult[] = [];
-			for (const gate of found.config.gates ?? []) {
+			// An explicitly empty gate list is NOT a passing verification: `[].every()` is true,
+			// which would report "All gates passed" for a project that declares no gate at all.
+			const gates = found.config.gates ?? [];
+			if (gates.length === 0) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: ".pi/verify.json declares no gates — nothing to verify. This is not a pass.",
+						},
+					],
+					details: { passed: false, gateCount: 0 },
+				};
+			}
+			for (const gate of gates) {
 				results.push(await runGate(ctx.cwd, gate, timeoutMs));
 			}
 			const passed = results.every((r) => r.passed);
@@ -192,7 +206,12 @@ export default function (pi: ExtensionAPI) {
 			}
 			const timeoutMs = found.config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 			const results: GateResult[] = [];
-			for (const gate of found.config.gates ?? []) {
+			const gates = found.config.gates ?? [];
+			if (gates.length === 0) {
+				ctx.ui.notify(".pi/verify.json declares no gates — nothing to verify.", "info");
+				return;
+			}
+			for (const gate of gates) {
 				results.push(await runGate(ctx.cwd, gate, timeoutMs));
 			}
 			const passed = results.every((r) => r.passed);
@@ -214,7 +233,12 @@ export default function (pi: ExtensionAPI) {
 		for (const gate of found.config.gates ?? []) {
 			results.push(await runGate(ctx.cwd, gate, timeoutMs));
 		}
-		if (results.every((r) => r.passed)) return;
+		if (results.every((r) => r.passed)) {
+			// Gates are green: the fix budget is spent, it does not accumulate between unrelated tasks
+			// (otherwise task D gets zero attempts because A-C used them).
+			iterations = 0;
+			return;
+		}
 
 		const failedNames = results.filter((r) => !r.passed).map((r) => r.name).join(", ");
 		console.error(`[verify-gates] FAILED: ${failedNames}`);

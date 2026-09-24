@@ -162,6 +162,17 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		});
 	}
 
+	/**
+	 * Publish the read-only state. The gate below only sees `tool_call`, and a slash command never
+	 * fires one, so a command that writes files (e.g. /deanon) has to be told separately. EVERY place
+	 * that changes `planModeEnabled` must call this — the first version emitted only on the toggle and
+	 * on session start, and the "Execute the plan" exit then left the state stale, blocking /deanon
+	 * for the whole execution phase.
+	 */
+	function publishPlanState(): void {
+		pi.events.emit(PLAN_STATE_CHANNEL, { enabled: planModeEnabled });
+	}
+
 	// --- Toggle --------------------------------------------------------------
 
 	function togglePlanMode(ctx: ExtensionContext): void {
@@ -178,10 +189,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 		updateStatus(ctx);
 		persistState();
-		// Publish the state: the read-only gate below only sees `tool_call`, and a slash command never
-		// fires one. A command that writes files (e.g. /deanon, /anon-allow) must be able to ask
-		// whether this session is read-only, or the mode's promise is not kept for it.
-		pi.events.emit(PLAN_STATE_CHANNEL, { enabled: planModeEnabled });
+		publishPlanState();
 	}
 
 	pi.registerCommand("plan", {
@@ -469,6 +477,7 @@ Execute the steps in order. After a step is fully completed AND verified, includ
 			restoreNormalModeTools();
 			updateStatus(ctx);
 			persistState();
+			publishPlanState(); // the approved exit re-enables writes: the state must say so
 
 			const remainingList = todoItems
 				.map((t) => `${t.step}.${t.tier ? ` [${t.tier}]` : ""} ${t.text}`)
@@ -541,6 +550,6 @@ Route each step through the dispatch skill (delegate mechanical/independent step
 			enablePlanModeTools();
 		}
 		updateStatus(ctx);
-		pi.events.emit(PLAN_STATE_CHANNEL, { enabled: planModeEnabled });
+		publishPlanState();
 	});
 }
