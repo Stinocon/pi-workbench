@@ -11,7 +11,6 @@ rules:
     wrong:
       - "Luca, ha comprato una nuova macchina."
     register: all
-    check: it-virgola-soggetto-verbo
     source: "grammatica-italiana.dossier.net — La virgola"
 
   - id: it-punt-virgola-enumerazioni
@@ -86,9 +85,14 @@ rules:
     name: "Accenti"
     rule: "'È' (verbo) con accento grave; 'po'' con apostrofo (troncamento di 'poco'); mai 'pò'. 'Perché', 'affinché', 'giacché' con accento acuto finale."
     examples:
-      - "È vero." / "un po' di tempo" / "perché"
+      - "È vero."
+      - "un po' di tempo"
+      - "perché"
     wrong:
-      - "E' vero." / "un pò di tempo" / "perchè"
+      - "E' vero."
+      - "un pò di tempo"
+      - "perchè"
     register: all
-    check: it-accenti
+    checks: [it-accento-e, it-accento-po, it-accento-che]
+    note: "Questa voce è la guida complessiva sull'accento; i pattern meccanizzati sono tre, elencati in `checks`."
     source: "grammatica-italiana.dossier.net — Accento"

@@ -18,10 +18,11 @@ import { lookup as dnsLookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
 const MAX_BYTES = 200_000; // cap sul corpo scaricato (i file enormi non si riversano nel contesto)
+const MAX_SEARCH_BYTES = 1_000_000; // la pagina dei risultati DDG è più grande di una pagina normale
 const MAX_REDIRECTS = 5;
 const PREVIEW_CHARS = 12_000;
 
-// ── Guardia SSRF (distillata e semplificata) ──────────────────────────────
+// ── Guardia SSRF (distillata e semplificata) ─────────────────────────────
 function blockedIPv4(oct: number[]): boolean {
   const [a, b] = oct;
   return (
@@ -36,15 +37,39 @@ function blockedIPv4(oct: number[]): boolean {
   );
 }
 
+/**
+ * Decode the IPv4 embedded in an IPv6 address, if any: IPv4-mapped (::ffff:0:0/96),
+ * IPv4-compatible (::/96) and NAT64 (64:ff9b::/96).
+ *
+ * Why this exists: the URL parser canonicalises `[::ffff:127.0.0.1]` to `[::ffff:7f00:1]`, so a
+ * check written against the dotted form never fires on a real hostname — the hextets are the only
+ * representation that matches what the connection will actually use.
+ */
+function embeddedIPv4(n: string): number[] | undefined {
+  let tail: string;
+  if (n.startsWith("::ffff:")) tail = n.slice(7);
+  else if (n.startsWith("64:ff9b::")) tail = n.slice(9);
+  else if (n.startsWith("::")) tail = n.slice(2);
+  else return undefined;
+  if (!tail) return undefined;
+  if (tail.includes(".")) {
+    const o = tail.split(".").map(Number);
+    return o.length === 4 && o.every((x) => Number.isInteger(x) && x >= 0 && x <= 255) ? o : undefined;
+  }
+  const h = tail.split(":");
+  if (h.length !== 2 || !h.every((x) => /^[0-9a-f]{1,4}$/.test(x))) return undefined;
+  const hi = parseInt(h[0], 16);
+  const lo = parseInt(h[1], 16);
+  return [hi >> 8, hi & 0xff, lo >> 8, lo & 0xff];
+}
+
 function blockedIPv6(addr: string): boolean {
   const n = addr.toLowerCase();
   if (n === "::" || n === "::1") return true;
   if (n.startsWith("fc") || n.startsWith("fd")) return true; // fc00::/7 unique-local
   if (/^fe[89ab]/.test(n)) return true; // fe80::/10 link-local
-  if (n.startsWith("::ffff:")) {
-    const v4 = n.slice(7).split(".").map(Number);
-    return v4.length === 4 && blockedIPv4(v4);
-  }
+  const v4 = embeddedIPv4(n);
+  if (v4) return blockedIPv4(v4);
   return false;
 }
 
@@ -85,7 +110,42 @@ async function validateUrl(raw: string | URL): Promise<URL> {
   }
   if (!addrs.length) throw new Error(`Risoluzione DNS fallita per ${host} (nessun indirizzo)`);
   for (const { address } of addrs) assertPublic(address);
+  // Limite dichiarato: `fetch` qui sotto risolve il nome una seconda volta da sé, quindi un nome
+  // ostile che cambia risposta fra le due risoluzioni (DNS rebinding) può ancora raggiungere un
+  // indirizzo privato. Pinnare l'IP validato richiede un dispatcher undici con `connect`/`lookup`
+  // propri — non implementato qui. La difesa reale è che OGNI risoluzione viene validata, non che
+  // sia quella che la connessione userà: nessun claim più forte di questo va scritto in un commento.
   return u;
+}
+
+/** Legge il corpo applicando il cap durante lo streaming: `arrayBuffer()` bufferizza tutto prima di
+ *  poter misurare, quindi un corpo enorme diventerebbe memoria occupata prima di essere rifiutato. */
+async function readCapped(res: Response, max: number): Promise<Uint8Array> {
+  const declared = Number(res.headers.get("content-length") ?? "");
+  if (Number.isFinite(declared) && declared > max) {
+    throw new Error(`Corpo troppo grande (Content-Length ${declared} byte, max ${max})`);
+  }
+  if (!res.body) return new Uint8Array(0);
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel().catch(() => {});
+      throw new Error(`Corpo troppo grande (oltre ${max} byte)`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.byteLength;
+  }
+  return out;
 }
 
 async function fetchGuarded(rawUrl: string): Promise<string> {
@@ -103,9 +163,7 @@ async function fetchGuarded(rawUrl: string): Promise<string> {
       continue;
     }
     if (!res.ok) throw new Error(`HTTP ${res.status} per ${url.toString()}`);
-    const buf = new Uint8Array(await res.arrayBuffer());
-    if (buf.length > MAX_BYTES) throw new Error(`Corpo troppo grande (${buf.length} byte, max ${MAX_BYTES})`);
-    return new TextDecoder().decode(buf);
+    return new TextDecoder().decode(await readCapped(res, MAX_BYTES));
   }
   throw new Error("Troppi redirect");
 }
@@ -184,7 +242,7 @@ export default function (pi: ExtensionAPI) {
           headers: { "user-agent": "Mozilla/5.0 (compatible; pi-web-tool/1.0)" },
           signal: AbortSignal.timeout(15000),
         });
-        const html = await res.text();
+        const html = new TextDecoder().decode(await readCapped(res, MAX_SEARCH_BYTES));
         const links = [...html.matchAll(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map(
           (m) => ({ href: cleanDdgUrl(m[1]), title: htmlToText(m[2]) }),
         );

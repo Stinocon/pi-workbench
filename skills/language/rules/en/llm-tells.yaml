@@ -1,0 +1,100 @@
+# Language Layer — LLM-typical English tells
+# Constructions that are grammatically correct but read as machine-written. The catalogue is an
+# internal distillation, not a copy of any published list (same convention as rules/it/llm-tells.yaml):
+# `source` says so rather than citing an authority it does not have.
+# `check` = mechanized in tools/check.py; absent = model guidance only.
+
+tells:
+  - id: en-llm-formulaic-opener
+    name: "Formulaic opener / closer"
+    pattern: "'It's important to note that', 'It is worth mentioning that', 'In conclusion, we can say', 'In today's fast-paced world', 'Let's dive in', 'In this article, we will explore'"
+    example: "It's important to note that the daemon is not restartable."
+    prefer: "The daemon is not restartable."
+    note: "The formula carries no information. Delete it and the sentence gets stronger."
+    register: all
+    check: en-llm-formulaic-opener
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-marketing-lexicon
+    name: "Marketing lexicon"
+    pattern: "'seamless', 'robust', 'comprehensive', 'cutting-edge', 'game-changing', 'leverage', 'unlock', 'empower', 'elevate', 'delve into', 'supercharge', 'effortless', 'world-class'"
+    example: "The tool provides a seamless, robust and comprehensive experience."
+    prefer: "State what it does: 'the tool keeps the index and the file in step'."
+    note: >
+      The words are not forbidden — 'robust' has a technical sense. The tell is using them in place
+      of a claim: if the sentence survives deleting the adjective, the adjective was never doing work.
+    register: all
+    check: en-llm-marketing-lexicon
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-hollow-compound
+    name: "Hollow X-of-Y compound"
+    pattern: "'a testament to', 'a hub of', 'a beacon of', 'a treasure trove of', 'a game-changer for', 'a deep dive into'"
+    example: "This release is a testament to the team's commitment to quality."
+    prefer: "Say what changed: 'this release fixes the four crash reports from August'."
+    note: "The metaphor substitutes for an unspecified claim."
+    register: narrative
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-nominalization
+    name: "Nominalization instead of a verb"
+    pattern: "'the implementation of', 'the utilisation of', 'the performance of', 'the facilitation of' + noun where a verb would do"
+    example: "We performed the implementation of the retry logic."
+    prefer: "We implemented the retry logic."
+    register: all
+    check: en-llm-nominalization
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-connector-repetition
+    name: "Repeated sentence-initial connectors"
+    pattern: "Moreover, … Moreover, … / Furthermore, … Furthermore, … / Additionally, repeated in consecutive sentences"
+    example: "Moreover, the index is stale. Moreover, the cache is cold. Moreover, the queue is backed up."
+    prefer: "Combine: 'the index is stale, the cache is cold and the queue is backed up'."
+    register: all
+    check: en-llm-connector-repetition
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-parallel-triad
+    name: "Symmetrical triads"
+    pattern: "three parallel clauses or bullet points of the same shape, repeated across a document as the default unit of thought"
+    example: "It is fast, it is reliable, and it is easy to use."
+    prefer: "Vary the shape; let the content decide how many items there are."
+    note: >
+      Same defect AGENTS.md §9 names: perfect symmetry is a machine fingerprint. A triad that the
+      content actually requires is fine; every paragraph being a triad is not.
+    register: all
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-em-dash-overuse
+    name: "Em dash overuse"
+    pattern: "several em dashes in one paragraph, typically where a colon, a comma or a full stop fits"
+    example: "The fix is small — a bounds check — and it lands in the parser — the hot path — today."
+    prefer: "The fix is small (a bounds check) and lands in the parser, the hot path, today."
+    register: all
+    check: en-llm-em-dash-overuse
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-restating-nothing
+    name: "Restating without adding"
+    pattern: "'In other words', 'Put simply', 'That is to say' used to repeat the previous sentence rather than to translate it"
+    example: "The index is incremental. In other words, it only reads changed files."
+    prefer: "Keep the second sentence and delete the first: 'It only reads changed files.'"
+    note: "The connective is legitimate when it genuinely restates something technical in plain terms."
+    register: all
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-closing-flourish
+    name: "Closing flourish"
+    pattern: "'And that's why …', 'The possibilities are endless', 'Only time will tell', 'One thing is certain'"
+    example: "And that's why local-first matters."
+    prefer: "End on the honest conclusion, including a failure. No flourish."
+    note: "A public first-person narrative ends on the honest conclusion: the closing does not need a bow."
+    register: narrative
+    source: "internal LLM-tell catalogue (distilled)"
+
+  - id: en-llm-fake-precision
+    name: "Invented numerical precision"
+    pattern: "exact figures ('47% of users', '3.2x faster') with no source behind them"
+    prefer: "Cite the measurement, or state the gap. Never a number without an anchor."
+    register: [formal, narrative]
+    source: "regola di onestà (AGENTS.md §2) — mai numeri inventati"

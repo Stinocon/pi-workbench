@@ -3,6 +3,8 @@
     { "name": "config-docs", "command": "bash scripts/check-config-docs.sh" },
     { "name": "extensions", "command": "node scripts/check-extensions.cjs" },
     { "name": "skills", "command": "node scripts/check-skill-frontmatter.cjs" },
+    { "name": "skill-yaml", "command": "node scripts/check-skill-yaml.cjs" },
+    { "name": "language-rules", "command": "python3 skills/language/tools/check.py test && python3 skills/language/tools/check_rule_refs.py" },
     { "name": "anon-guard", "command": "node scripts/check-anon-guard.cjs -q" }
   ],
   "timeoutMs": 180000,

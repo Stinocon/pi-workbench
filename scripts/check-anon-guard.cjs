@@ -104,11 +104,23 @@ async function loadVariant(name, transform) {
   const toasts = [];
   const pasted = [];
   const messages = [];
+  const busHandlers = new Map();
+  const events = {
+    emit: (ch, data) => {
+      for (const fn of busHandlers.get(ch) ?? []) fn(data);
+    },
+    on: (ch, fn) => {
+      if (!busHandlers.has(ch)) busHandlers.set(ch, []);
+      busHandlers.get(ch).push(fn);
+      return () => {};
+    },
+  };
   const pi = {
     on: (ev, fn) => (handlers[ev] ||= []).push(fn),
     registerFlag: (n, o) => (flags[n] = o.default),
     registerCommand: (n, o) => (commands[n] = o),
     getFlag: (n) => flags[n],
+    events,
   };
   factory(pi);
   return {
@@ -119,6 +131,7 @@ async function loadVariant(name, transform) {
     toasts,
     messages,
     pasted,
+    events,
     ctx: {
       cwd: tmp,
       mode: "print",
@@ -212,6 +225,11 @@ function writeFixtureHome() {
 
 async function main() {
   const fx = writeFixtureHome();
+  // The extension spawns the ENGINE as a subprocess, and the engine resolves ANON_HOME from the
+  // environment (falling back to ~/.anon). Patching the extension's constant alone left the child
+  // reading the operator's real dictionary and real allowlist, so this fixture was never actually
+  // hermetic: entities.txt below had no effect, and an allowlist entry could not be tested at all.
+  process.env.ANON_HOME = fx.home;
 
   // --- healthy engine -------------------------------------------------------
   const g = await loadVariant("ok", pointToTemp);
@@ -241,6 +259,36 @@ async function main() {
   const link = path.join(tmp, "map-link.json");
   fs.symlinkSync(path.join(fx.maps, "dummy.map.json"), link);
   check("read: symlink into maps is BLOCKED", (await readCall(link))?.block === true);
+
+  // The maps hard-block must survive a shell: `bash` carries its payload in `command`, not in a
+  // `path` field, so a check keyed on `path` alone let `cat ~/.anon/maps/…` reach the real values.
+  const bashCall = (command) => g.handlers.tool_call[0]({ toolName: "bash", input: { command } }, g.ctx);
+  check("bash: reading a maps file is BLOCKED", (await bashCall(`cat ${fx.maps}/dummy.map.json`))?.block === true);
+  check("bash: ~/.anon/maps is BLOCKED", (await bashCall("ls ~/.anon/maps"))?.block === true);
+  check("bash: a glob into maps is BLOCKED", (await bashCall("cat ~/.anon/maps/*.json"))?.block === true);
+  check("bash: only MENTIONING the path is not blocked", (await bashCall('rg -n "\\.anon/maps" docs/')) === undefined);
+  check("bash: an unrelated command is not blocked", (await bashCall("ls -la /tmp")) === undefined);
+
+  // The size gate must not override the allowlist: the block message tells the operator to declare
+  // the path in allow.txt, and for a file past the cap that advice used to be a dead end.
+  fs.writeFileSync(path.join(fx.home, "allow.txt"), "big.log\n");
+  check("read: an allowlisted file past the size cap is ALLOWED", (await readCall(fx.big)) === undefined);
+  fs.rmSync(path.join(fx.home, "allow.txt"));
+  check("read: without the allowlist entry it is BLOCKED again", (await readCall(fx.big))?.block === true);
+
+  // Plan mode is read-only, and its gate lives on `tool_call` — which a slash command never fires.
+  // The two commands that write files must consult the published state, or the promise leaks.
+  g.events.emit("plan-mode:state", { enabled: true });
+  g.messages.length = 0;
+  await g.commands["deanon"].handler(fx.finished, g.ctx);
+  check("plan mode: /deanon refuses to write", g.messages.some((m) => /read-only/.test(m)));
+  g.messages.length = 0;
+  await g.commands["anon-allow"].handler(fx.clean, g.ctx);
+  check(
+    "plan mode: /anon-allow refuses before the confirmation check",
+    g.messages.some((m) => /read-only/.test(m)),
+  );
+  g.events.emit("plan-mode:state", { enabled: false });
 
   const conv = await toolResult("doc_to_markdown", "Referente: Mario Rossi <mario.rossi@acme.it>\n");
   check("doc_to_markdown: sensitive Markdown is BLOCKED", conv?.isError === true);

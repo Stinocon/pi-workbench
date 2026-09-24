@@ -58,7 +58,6 @@ errors:
     rule_ref: it-preposizioni-con
     severity: medium
     exceptions: []
-    check: it-preposizione-colla
     source: "grammatica-italiana.dossier.net — Errori (voce 'collo')"
 
   - id: err-congiuntivo-condizionale
@@ -132,7 +131,6 @@ errors:
     rule_ref: it-concordanza-genere-numero
     severity: high
     exceptions: []
-    check: it-concordanza-articolo
     source: "grammatica-italiana.dossier.net — Apostrofo"
 
   - id: err-qual-e

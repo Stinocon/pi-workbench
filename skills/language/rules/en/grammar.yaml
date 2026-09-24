@@ -1,0 +1,194 @@
+# Language Layer — English grammar rules
+# Sources name the standard reference work; no section numbers are quoted, because they were not
+# verified against a printed edition and a fabricated citation is worse than none.
+# `check` = mechanized in tools/check.py (pattern id); absent = model guidance only.
+# Register note: `formal` = client reports and documentation, `narrative` = first-person public
+# writing (README, blog), `all` = both.
+
+rules:
+  # --- Agreement and reference ---
+  - id: en-subject-verb-agreement
+    name: "Subject–verb agreement"
+    rule: >
+      The verb agrees with the head noun of the subject, not with an intervening phrase or with the
+      nearest noun. Collective nouns (team, committee, government) take a singular verb in AmE and
+      may take a plural in BrE — pick one and stay consistent within a document.
+    examples:
+      - "The list of items is long."          # head noun: list
+      - "Each of the servers has its own key." # each → singular
+    wrong:
+      - "The list of items are long."
+      - "Each of the servers have their own key."
+    register: all
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (agreement)"
+
+  - id: en-its-its
+    name: "its vs it's"
+    rule: "`its` is the possessive; `it's` is a contraction of `it is` / `it has`. There is no `its'`."
+    examples:
+      - "The service lost its connection."
+      - "It's already deployed."
+    wrong:
+      - "The service lost it's connection."
+      - "The service lost its' connection."
+    register: all
+    check: en-its-possessive
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (apostrophe)"
+
+  - id: en-your-youre
+    name: "your vs you're"
+    rule: "`your` is the possessive; `you're` is `you are`."
+    examples:
+      - "Your configuration is stored locally."
+      - "You're running an old version."
+    wrong:
+      - "Your running an old version."
+    register: all
+    check: en-your-youre
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-their-there-theyre
+    name: "their / there / they're"
+    rule: "`their` = possessive, `there` = place or existential, `they're` = `they are`."
+    examples:
+      - "Their servers are in Frankfurt."
+      - "There are three replicas."
+      - "They're rebuilding the index."
+    wrong:
+      - "Their are three replicas."
+    register: all
+    check: en-their-there
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-could-of
+    name: "could of / should of / would of"
+    rule: "The auxiliary is `have`, not `of`: could have, should have, would have (could've is acceptable)."
+    examples:
+      - "I should have checked the logs."
+      - "We could've avoided this."
+    wrong:
+      - "I should of checked the logs."
+    register: all
+    check: en-could-of
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (auxiliary verbs)"
+
+  - id: en-between-you-and-i
+    name: "between you and me"
+    rule: "A preposition governs the objective case: between you and me, not between you and I."
+    examples:
+      - "Between you and me, the estimate is optimistic."
+    wrong:
+      - "Between you and I, the estimate is optimistic."
+    register: all
+    check: en-between-you-and-i
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (pronoun case)"
+
+  - id: en-less-fewer
+    name: "less vs fewer"
+    rule: >
+      `fewer` with countable plurals (fewer files), `less` with mass nouns and measures (less time,
+      less than 20 MB). The exception is idiomatic measure phrases where `less than` modifies a
+      quantity rather than counting items.
+    examples:
+      - "Fewer requests reached the backend."
+      - "The job used less memory."
+    wrong:
+      - "Less requests reached the backend."
+    register: all
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (less/fewer)"
+
+  - id: en-dangling-modifier
+    name: "Dangling and misplaced modifiers"
+    rule: >
+      An introductory participial phrase attaches to the subject of the main clause. If it does not,
+      either reword the phrase or name the actor.
+    examples:
+      - "After analysing the logs, we found a spike."       # we analysed
+      - "After analysing the logs, a spike was found."      # acceptable only when the actor is genuinely irrelevant
+    wrong:
+      - "After analysing the logs, the spike was obvious to us from the graph."  # ambiguous actor
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (grammar and usage)"
+
+  - id: en-parallel-structure
+    name: "Parallel structure in lists and comparisons"
+    rule: >
+      Items in a list, and the two halves of a comparison, take the same grammatical form. Mixing a
+      noun with a clause (or an infinitive with a gerund) inside one list is the common failure.
+    examples:
+      - "The tool reads, validates and writes the file."
+      - "Designing the schema was harder than implementing it."
+    wrong:
+      - "The tool reads the file, validation, and then it writes it."
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (lists, parallelism)"
+
+  - id: en-double-negative
+    name: "Double negation"
+    rule: >
+      Two negators in one clause cancel in standard English. One negator plus a negative-word
+      quantifier (barely, hardly, scarcely) is not a double negative and is correct.
+    examples:
+      - "Nothing was lost."
+      - "We hardly ever restart it."
+    wrong:
+      - "We didn't lose nothing."
+    register: all
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (negation)"
+
+  - id: en-article-countable
+    name: "Article before a singular countable noun"
+    rule: >
+      A singular countable noun needs a determiner (a/an/the/this/my). Uncountable nouns
+      (information, advice, evidence, feedback, software) take no indefinite article and have no
+      plural.
+    examples:
+      - "A request arrives; the handler validates it."
+      - "We collected evidence from three hosts."
+    wrong:
+      - "Request arrives; handler validates it."
+      - "We received an information about the outage."
+    register: all
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (articles)"
+
+  - id: en-preposition-collocation
+    name: "Preposition collocations"
+    rule: >
+      Dependent prepositions are fixed by convention, not by logic: depend on, comply with, consist
+      of, differ from, conducive to, responsible for. When unsure, prefer the verb whose
+      preposition you are certain of.
+    examples:
+      - "The service depends on the queue."
+      - "The design complies with the spec."
+    wrong:
+      - "The service depends of the queue."
+      - "The design complies to the spec."
+    register: all
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (prepositions)"
+
+  - id: en-conditional-tense
+    name: "Conditional and reported speech"
+    rule: >
+      In a counterfactual the past form is `had` + past participle in the if-clause and
+      `would have` + past participle in the main clause. Reported speech moves the tense back when
+      the reporting verb is in the past.
+    examples:
+      - "If we had tested it, we would have caught the bug."
+      - "She said the deploy had finished."
+    wrong:
+      - "If we would have tested it, we would have caught the bug."
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (verbs)"
+
+  - id: en-there-is-plural
+    name: "There is vs there are"
+    rule: >
+      The existential verb agrees with the noun that follows it. In informal speech `there's` before
+      a plural passes unnoticed; in written documentation it does not.
+    examples:
+      - "There are three replicas."
+      - "There is one caveat."
+    wrong:
+      - "There is three replicas."
+    register: formal
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage (agreement)"

@@ -33,6 +33,10 @@ import {
 // Built-in / offload tools that must never run in plan mode.
 const READ_ONLY_BLOCKED_TOOLS = new Set(["edit", "write", "subagent", "delegate"]);
 
+/** Channel other extensions subscribe to in order to keep a read-only promise their commands would
+ *  otherwise break: a `registerCommand` handler never fires a `tool_call`. */
+const PLAN_STATE_CHANNEL = "plan-mode:state";
+
 // Home Assistant write/delete tools (matched by suffix so a namespace prefix
 // cannot defeat the block).
 const HA_WRITE_TOOL_SUFFIXES = [
@@ -174,6 +178,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 		updateStatus(ctx);
 		persistState();
+		// Publish the state: the read-only gate below only sees `tool_call`, and a slash command never
+		// fires one. A command that writes files (e.g. /deanon, /anon-allow) must be able to ask
+		// whether this session is read-only, or the mode's promise is not kept for it.
+		pi.events.emit(PLAN_STATE_CHANNEL, { enabled: planModeEnabled });
 	}
 
 	pi.registerCommand("plan", {
@@ -533,5 +541,6 @@ Route each step through the dispatch skill (delegate mechanical/independent step
 			enablePlanModeTools();
 		}
 		updateStatus(ctx);
+		pi.events.emit(PLAN_STATE_CHANNEL, { enabled: planModeEnabled });
 	});
 }

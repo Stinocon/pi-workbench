@@ -43,6 +43,7 @@
 
 import { mkdir, writeFile, appendFile, access, readdir, rename, readFile } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import os from "node:os";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
@@ -73,6 +74,18 @@ function safeMemoryDir(cwd: string): string {
 
 function projectKey(cwd: string): string {
 	return (path.basename(cwd) || "project").replace(/[^\w.-]+/g, "_");
+}
+
+/**
+ * Stable key for the project's memory INDEX. A hash of the whole resolved path, not the basename:
+ * two projects called the same thing (a common `temp`, or a `local` worktree) would otherwise share
+ * one index and read each other's memory, and a project literally named `global` would write over
+ * the global memory index. rag.py keys its own per-project DBs the same way — one scheme, not two.
+ * The readable basename stays the human label and the work-log filename, which live in a directory
+ * that already identifies the project.
+ */
+function projectDbKey(cwd: string): string {
+	return createHash("sha256").update(path.resolve(cwd)).digest("hex").slice(0, 16);
 }
 
 function memoryGlobalDir(): string {
@@ -192,7 +205,7 @@ async function decisionStatus(file: string): Promise<string | null> {
 async function searchMemory(cwd: string, query: string, k: number): Promise<string> {
 	const tiers = [
 		{ label: "global", dir: memoryGlobalDir(), db: path.join(ragDbDir(), "memory-global.db") },
-		{ label: projectKey(cwd), dir: memoryDir(cwd), db: path.join(ragDbDir(), `memory-${projectKey(cwd)}.db`) },
+		{ label: projectKey(cwd), dir: memoryDir(cwd), db: path.join(ragDbDir(), `memory-${projectDbKey(cwd)}.db`) },
 	];
 	const parts: string[] = [];
 	for (const t of tiers) {
@@ -340,7 +353,10 @@ export default function (pi: ExtensionAPI): void {
 			candidate = event.input.content;
 		} else if (isToolCallEventType("edit", event)) {
 			target = event.input.path;
-			candidate = (event.input.edits ?? []).map((e) => `${e.newText ?? ""}\n${e.oldText ?? ""}`).join("\n");
+			// Only what the edit INTRODUCES. Scanning `oldText` too meant an `edit` could never REMOVE a
+			// credential from a memory file: the text being deleted matched the secret scan, so the fix
+			// for a leaked secret was blocked by the guard that exists to stop leaks.
+			candidate = (event.input.edits ?? []).map((e) => e.newText ?? "").join("\n");
 		} else {
 			return;
 		}

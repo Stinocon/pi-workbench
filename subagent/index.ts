@@ -306,7 +306,12 @@ async function runSingleAgent(
 	const thinkingLevel = (agent.thinkingLevel as ThinkingLevel | undefined) ??
 		(agent.model ? undefined : dispatchDefaults.thinkingLevel);
 	if (thinkingLevel) args.push("--thinking", thinkingLevel);
-	if (agent.tools && agent.tools.length > 0) args.push("--tools", agent.tools.join(","));
+	// An explicitly empty `tools: []` means NO tools. Collapsing it to "no restriction" handed the
+	// agent the full default set (bash, write, edit) — the opposite of what it declared.
+	if (agent.tools) {
+		if (agent.tools.length > 0) args.push("--tools", agent.tools.join(","));
+		else args.push("--no-tools");
+	}
 
 	let tmpPromptDir: string | null = null;
 	let tmpPromptPath: string | null = null;
@@ -374,7 +379,12 @@ async function runSingleAgent(
 							currentResult.usage.cacheRead += usage.cacheRead || 0;
 							currentResult.usage.cacheWrite += usage.cacheWrite || 0;
 							currentResult.usage.cost += usage.cost?.total || 0;
-							currentResult.usage.contextTokens = usage.totalTokens || 0;
+							// Peak, not last: overwriting it each turn made `ctx:` report only the final turn's
+							// size, understating what the run actually peaked at.
+							currentResult.usage.contextTokens = Math.max(
+								currentResult.usage.contextTokens,
+								usage.totalTokens || 0,
+							);
 						}
 						if (!currentResult.model && msg.model) currentResult.model = msg.model;
 						if (msg.stopReason) currentResult.stopReason = msg.stopReason;
@@ -400,12 +410,22 @@ async function runSingleAgent(
 				currentResult.stderr += data.toString();
 			});
 
-			proc.on("close", (code) => {
+			proc.on("close", (code, sig) => {
 				if (buffer.trim()) processLine(buffer);
-				resolve(code ?? 0);
+				// A process killed by a signal closes with code === null. Mapping that to 0 reported a
+				// crashed worker as "completed", and in chain mode fed an empty {previous} downstream.
+				if (code === null && sig) {
+					currentResult.stderr += `\n[subagent] killed by signal ${sig}\n`;
+					resolve(1);
+					return;
+				}
+				resolve(code ?? 1);
 			});
 
-			proc.on("error", () => {
+			proc.on("error", (err) => {
+				// Discarding the error turned ENOENT (`pi` not on PATH) into "Agent failed: (no output)",
+				// with nothing to say why.
+				currentResult.stderr += `\n[subagent] failed to start: ${err instanceof Error ? err.message : String(err)}\n`;
 				resolve(1);
 			});
 
@@ -425,7 +445,12 @@ async function runSingleAgent(
 		});
 
 		currentResult.exitCode = exitCode;
-		if (wasAborted) throw new Error("Subagent was aborted");
+		// An aborted run is a FAILURE RESULT, not an exception: throwing here escaped `execute` in all
+		// three modes, so a parallel batch rejected and results/usage already streamed were lost.
+		if (wasAborted) {
+			currentResult.stopReason = "aborted";
+			currentResult.errorMessage = currentResult.errorMessage ?? "Subagent was aborted";
+		}
 		return currentResult;
 	} finally {
 		if (tmpPromptPath)
@@ -521,7 +546,7 @@ export default function (pi: ExtensionAPI) {
 				};
 			}
 
-			if ((agentScope === "project" || agentScope === "both") && confirmProjectAgents && ctx.hasUI) {
+			if ((agentScope === "project" || agentScope === "both") && confirmProjectAgents) {
 				const requestedAgentNames = new Set<string>();
 				if (params.chain) for (const step of params.chain) requestedAgentNames.add(step.agent);
 				if (params.tasks) for (const t of params.tasks) requestedAgentNames.add(t.agent);
@@ -534,6 +559,23 @@ export default function (pi: ExtensionAPI) {
 				if (projectAgentsRequested.length > 0) {
 					const names = projectAgentsRequested.map((a) => a.name).join(", ");
 					const dir = discovery.projectAgentsDir ?? "(unknown)";
+					// No UI means no consent can be obtained. Proceeding silently let a repository shadow a
+					// trusted user agent and run it unreviewed; refuse instead of "confirming" on nobody's
+					// behalf. A headless caller must pass confirmProjectAgents:false deliberately.
+					if (!ctx.hasUI) {
+						return {
+							content: [
+								{
+									type: "text",
+									text:
+										`Refused: this call would run project-local agent(s) (${names}) from ${dir}, and ` +
+										"this session has no UI to confirm them. Re-run interactively, or pass " +
+										"confirmProjectAgents:false to accept the risk explicitly.",
+								},
+							],
+							details: makeDetails(hasChain ? "chain" : hasTasks ? "parallel" : "single")([]),
+						};
+					}
 					const ok = await ctx.ui.confirm(
 						"Run project-local agents?",
 						`Agents: ${names}\nSource: ${dir}\n\nProject agents are repo-controlled. Only continue for trusted repositories.`,

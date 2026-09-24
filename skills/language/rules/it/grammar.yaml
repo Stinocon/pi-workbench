@@ -32,7 +32,6 @@ rules:
     wrong:
       - "Se non avevo troppa fretta, aspettavo."
     register: all
-    check: it-ipotetico-irrealta
     source: "grammatica-italiana.dossier.net — Periodo ipotetico"
 
   - id: it-ipotetico-irrealta-passato
@@ -44,7 +43,18 @@ rules:
     wrong:
       - "Se lo sapevo, venivo."
     register: all
-    check: it-ipotetico-irrealta
+    check: it-ipotetico-sapevo
+    source: "grammatica-italiana.dossier.net — Periodo ipotetico"
+
+  - id: it-ipotetico-condizionale-protasi-errato
+    name: "Condizionale nella protasi ('se avrei saputo')"
+    rule: "La protasi non vuole mai il condizionale: vuole il congiuntivo (imperfetto o trapassato). 'Se avrei saputo' → 'se avessi saputo'."
+    examples:
+      - "Se avessi saputo, sarei venuto."
+    wrong:
+      - "Se avrei saputo, sarei venuto."
+    register: all
+    check: it-ipotetico-condizionale-protasi
     source: "grammatica-italiana.dossier.net — Periodo ipotetico"
 
   - id: it-ipotetico-effetto-presente
@@ -124,7 +134,6 @@ rules:
       - "Un'altro caso."     # → un altro caso
       - "Un azione rapida."  # → un'azione
     register: all
-    check: it-concordanza-articolo
     source: "grammatica-italiana.dossier.net — Apostrofo / Concordanza"
 
   # --- Preposizioni ---
@@ -136,7 +145,7 @@ rules:
     wrong:
       - "Esco colla macchina."
     register: all
-    check: it-preposizione-colla
+    note: "Non meccanizzata di proposito: `colla` e `collo` sono anche sostantivi (la colla, il collo), quindi un pattern li segnalerebbe a torto. Resta guida per il modello. I pattern meccanizzati oggi sono quelli elencati da `check.py rules`."
     source: "grammatica-italiana.dossier.net — Errori grammaticali (voce 'collo')"
 
   - id: it-preposizioni-dietro

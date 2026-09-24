@@ -1,0 +1,88 @@
+# Language Layer — English register and lexicon
+# Registers are a choice, not a correctness judgement: a colloquial sentence can be perfectly
+# correct. What is a defect is MIXING registers without a reason, or drifting into a register the
+# audience does not expect.
+# Sources name the standard reference work. The `narrative` entries describe a first-person public
+# register and come from a local style profile this repo does not ship with: they are guidance, not a
+# citation.
+
+registers:
+  - id: en-reg-formal-report
+    name: "Formal report / specification"
+    audience: "a client, an auditor, a reviewing engineer"
+    traits:
+      - "Full forms over contractions (does not, it is)."
+      - "Impersonal or first-person-plural subject: the report describes, we recommend."
+      - "Latinate verb where the phrasal verb would be vague (obtain, verify, terminate)."
+      - "Hedging only where the evidence is genuinely uncertain, and then explicitly."
+      - "No jokes, no asides, no rhetorical questions."
+    source: "standard English usage — The Chicago Manual of Style (register)"
+
+  - id: en-reg-technical-docs
+    name: "Technical documentation / README"
+    audience: "an engineer who wants to use the thing, now"
+    traits:
+      - "Imperative for instructions: Run, Set, Do not commit."
+      - "Second person is normal (you can override it), first person singular is not."
+      - "Present tense, active voice; name the actor when it matters."
+      - "Contractions are fine; a short sentence is a feature."
+      - "State the caveat next to the claim, not in a closing section."
+    source: "standard English usage — The Chicago Manual of Style (technical writing)"
+
+  - id: en-reg-narrative
+    name: "Public narrative (first person)"
+    audience: "a curious peer, not a buyer"
+    traits:
+      - "First person, self-deprecating: put the failure first, not the conclusion that justifies it."
+      - "Short sentences alternating with long ones; contractions; dry wit, used sparingly."
+      - "One metaphor earns its place; three explained ones do not."
+      - "Confidence without marketing: state what works and what does not."
+    source: "local style profile (not shipped with this repo) — guidance, not a citation"
+
+  # --- Lexicon ---
+  - id: en-lex-anglicism-note
+    name: "Loanwords and italianisms"
+    rule: >
+      In English, prefer the native term unless the loanword is the technical name (Sagra stays
+      Sagra as a proper noun; verbatim stays verbatim). Italian words quoted from a source keep
+      their diacritics and are set in italics on first use.
+    examples:
+      - "The report is a verbatim transcript."
+      - "The comune sent the certificate."   # a named administrative entity: keep the local term
+    source: "standard English usage — The Chicago Manual of Style (foreign words)"
+
+  - id: en-lex-phrasal-vs-latinate
+    name: "Phrasal verb vs Latinate verb"
+    rule: >
+      Phrasal verbs (find out, set up, turn off) are natural in narrative and in instructions;
+      Latinate verbs (determine, configure, disable) read better in a formal report and are less
+      ambiguous for a non-native reader. Choose by register, then stay consistent.
+    examples:
+      - "Set up the tunnel before the first request."     # instructions
+      - "The tunnel is configured before any request is accepted."  # specification
+    source: "standard English usage — The Chicago Manual of Style (word choice)"
+
+  - id: en-lex-nominalization
+    name: "Nominalization instead of a verb"
+    rule: >
+      A verb is usually clearer than the noun built from it: 'we verify' over 'we perform a
+      verification of'. Nominalizations are not banned — a noun is right when the process itself is
+      the subject — but a sentence that needs two of them to make one point has lost the verb.
+    examples:
+      - "We verify the signature before storing the payload."
+      - "Signature verification happens before storage."    # acceptable: the step is the subject
+    wrong:
+      - "The performance of a verification of the signature is carried out prior to the storage of the payload."
+    source: "standard English usage — The Chicago Manual of Style (wordiness)"
+
+  - id: en-lex-hedging
+    name: "Stacked hedging"
+    rule: >
+      One hedge is a claim about confidence; two are a refusal to make one. 'may possibly suggest
+      that there could be' says nothing. Quantify the uncertainty instead, or state the gap.
+    examples:
+      - "The spike probably came from the retry loop (the two coincide within 200 ms)."
+      - "We cannot tell whether the spike came from the retry loop: the metrics are 60 s apart."
+    wrong:
+      - "This may possibly indicate that there might be a potential issue."
+    source: "regola di onestà (AGENTS.md §2) — dichiarare il gap, non accumulare cautele"

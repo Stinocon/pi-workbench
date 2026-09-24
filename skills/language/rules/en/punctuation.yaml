@@ -1,0 +1,129 @@
+# Language Layer — English punctuation
+# Sources name the standard reference work; no section numbers are quoted (see rules/en/grammar.yaml).
+# `check` = mechanized in tools/check.py; absent = model guidance only.
+
+rules:
+  - id: en-punct-possessive-apostrophe
+    name: "Possessive apostrophe"
+    rule: >
+      Singular noun + `'s` (the server's key); plural ending in s + `'` only (the servers' keys);
+      plural not ending in s + `'s` (the children's room). Pronouns take no apostrophe:
+      its, yours, hers, ours, theirs — only `it's` is the contraction.
+    examples:
+      - "The handler's timeout is 30 s."
+      - "The two handlers' timeouts differ."
+    wrong:
+      - "The two handler's timeouts differ."
+      - "The handler lost it's key."
+    register: all
+    check: en-its-possessive
+    source: "standard English usage — The Chicago Manual of Style (possessives)"
+
+  - id: en-punct-oxford-comma
+    name: "Serial comma (Oxford comma)"
+    rule: >
+      Not mandatory, but the choice must be consistent within a document. Prefer the serial comma
+      when the last item contains `and` or is a compound, and in any list whose omission would read
+      as an apposition.
+    examples:
+      - "We log requests, errors, and slow queries."
+      - "The tool ships with a CLI, a library and a daemon."   # acceptable if consistent
+    wrong:
+      - "We log requests, errors and slow queries, and we alert on all three." # ambiguous without the comma
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (serial commas)"
+
+  - id: en-punct-comma-splice
+    name: "Comma splice"
+    rule: >
+      Two independent clauses are joined by a semicolon, a full stop, or a comma plus a coordinating
+      conjunction (and, but, or, nor, for, so, yet). A comma alone is a splice.
+    examples:
+      - "The index was stale, so we rebuilt it."
+      - "The index was stale; we rebuilt it."
+    wrong:
+      - "The index was stale, we rebuilt it."
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (commas)"
+
+  - id: en-punct-introductory-comma
+    name: "Comma after an introductory element"
+    rule: >
+      A comma separates a leading phrase or subordinate clause from the main clause. Short
+      adverbials (Today, However, In 2024) take one; a brief prepositional phrase may omit it.
+    examples:
+      - "After the migration, the latency dropped."
+      - "However, the spike returned at 03:00."
+    wrong:
+      - "After the migration the latency dropped noticeably across every region that matters." # long opener, no comma
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (commas)"
+
+  - id: en-punct-no-comma-subject-verb
+    name: "No comma between subject and verb"
+    rule: "A single comma does not separate the subject from its verb, however long the subject is."
+    examples:
+      - "The list of every device on the network is long."
+    wrong:
+      - "The list of every device on the network, is long."
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (commas)"
+
+  - id: en-punct-dashes
+    name: "Hyphen, en dash, em dash"
+    rule: >
+      Hyphen joins a compound modifier (read-only, thirty-second); en dash marks a range or a
+      conflict of terms (2020–2024, the Rome–Milan link); em dash marks an interruption — sparingly,
+      because a document full of them reads as machine-written. Do not use a hyphen for a range.
+    examples:
+      - "The read-only replica answers on port 5433."
+      - "Between 2020–2024 the fleet doubled."
+    wrong:
+      - "The read only replica answers on port 5433."
+      - "See pages 10-15 and the client–server split."   # hyphen where an en dash marks a range
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (hyphens and dashes)"
+
+  - id: en-punct-quotation-marks
+    name: "Quotation marks: placement and variety"
+    rule: >
+      AmE places commas and periods inside the closing quotation mark, BrE outside; pick one
+      convention per document and do not mix it with the other. For code identifiers, prefer
+      backticks over quotation marks in technical writing.
+    examples:
+      - "The log says \"connection reset.\""     # AmE
+      - "The log says \"connection reset\"."     # BrE
+    wrong:
+      - "The log says \"connection reset\". ,"   # mixed conventions in one document
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (quotation marks)"
+
+  - id: en-punct-contractions-formal
+    name: "Contractions in formal registers"
+    rule: >
+      Contractions (don't, it's, we'll) are normal in narrative and documentation; in a formal
+      report or a specification the full form is the safer default, and mixing the two inside one
+      document is the real defect.
+    examples:
+      - "The daemon does not retry."          # formal report
+      - "It doesn't retry the request."       # narrative / README
+    wrong:
+      - "The daemon doesn't retry. It does not log the failure either."   # mixed within a paragraph
+    register: formal
+    source: "standard English usage — The Chicago Manual of Style (register and contractions)"
+
+  - id: en-punct-abbreviation-spacing
+    name: "Units, abbreviations and spacing"
+    rule: >
+      A space separates a number from its unit (30 s, 12 MB, 5 h); do not pluralise the unit
+      (12 MB, not 12 MBs). `i.e.` and `e.g.` take a comma after them in AmE; in running prose prefer
+      `that is` and `for example`. `etc.` at the end of a list introduced by `such as` or `e.g.` is
+      redundant.
+    examples:
+      - "The timeout is 30 s and the body is capped at 12 MB."
+      - "Retry on transient errors, for example a 503."
+    wrong:
+      - "The timeout is 30s and the body is capped at 12 MBs."
+      - "Retry on transient errors such as 429, 503, etc."
+    register: all
+    source: "standard English usage — The Chicago Manual of Style (numbers, abbreviations)"

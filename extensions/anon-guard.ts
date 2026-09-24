@@ -48,7 +48,9 @@ import os from "node:os";
 import path from "node:path";
 import { isToolCallEventType, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const ANON_HOME = path.join(os.homedir(), ".anon");
+// Resolve it the way the engine does (ANON_HOME, then ~/.anon): hardcoding ~/.anon while anon.py
+// honours the environment would point the guard at paths the engine never reads.
+const ANON_HOME = process.env.ANON_HOME ?? path.join(os.homedir(), ".anon");
 const ANON_PY = path.join(ANON_HOME, "anon.py");
 const DEANON_PY = path.join(ANON_HOME, "deanon.py");
 const MAPS_DIR = path.join(ANON_HOME, "maps");
@@ -58,6 +60,11 @@ const CONVERTER = path.join(ANON_HOME, "convert.py");
 // never goes next to the source (a project directory can be a git repository).
 const AUTO_DIR = path.join(ANON_HOME, "auto");
 const CHECK_TIMEOUT_MS = 20_000;
+// The allowlist verdict is decided BEFORE the engine scans anything, so an allowlisted path answers
+// in milliseconds whatever its size. This budget exists only to notice that a file is NOT
+// allowlisted: the engine has started scanning, and we stop it rather than pay the full scan just
+// to be told "too large" anyway.
+const ALLOW_PROBE_TIMEOUT_MS = 3_000;
 // stderr is only used for diagnostics: past this it is dropped rather than accumulated.
 const STDERR_CAP = 64 * 1024;
 // Conversion spawns anydoc, which is slower than a text scan; the redaction that follows is the
@@ -128,12 +135,50 @@ function realPath(target: string): string {
 
 const MAPS_REAL = realPath(MAPS_DIR);
 
+/**
+ * The spellings a shell command can use to reach the real-values maps directory. Matching only the
+ * resolved `path` field left `bash` uncovered: a shell command carries its payload in `command`,
+ * not in a path, so `cat ~/.anon/maps/<id>.map.json` reached the real values with the hard block
+ * never firing.
+ *
+ * The boundary rule is a trailing `/` or end of string: `~/.anon/maps/x.json` and `ls ~/.anon/maps`
+ * are paths into the directory, while a documentation search for the string `.anon/maps"` is not.
+ */
+function referencesMapsDir(text: string, cwd: string): boolean {
+	const spellings = [
+		MAPS_DIR,
+		"~/.anon/maps",
+		"$HOME/.anon/maps",
+		"${HOME}/.anon/maps",
+		"$ANON_HOME/maps",
+		"${ANON_HOME}/maps",
+		".anon/maps",
+		path.resolve(cwd, ".anon", "maps"),
+	];
+	for (const s of spellings) {
+		const idx = text.indexOf(s);
+		if (idx < 0) continue;
+		const after = text[idx + s.length];
+		if (after === undefined || after === "/") return true;
+	}
+	return false;
+}
+
 function insideMapsDir(target: string): boolean {
 	for (const candidate of [path.resolve(target), realPath(target)]) {
 		const relative = path.relative(MAPS_REAL, candidate);
 		if (relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))) return true;
 	}
 	return false;
+}
+
+function mapsBlockReason(what: string): string {
+	return (
+		`anon-guard: BLOCKED — ${what} reaches inside ~/.anon/maps/.\n` +
+		"Those maps hold the REAL values behind the placeholders; they must never enter the " +
+		"context. Read the redacted document instead, and re-apply the map only at the end " +
+		"with `deanon.py` (outside the agent)."
+	);
 }
 
 interface RunResult {
@@ -259,12 +304,31 @@ async function checkFile(target: string, ctx: GuardCtx, extraGlobs: string[]): P
 		return null; // does not exist / not readable: let the tool report its own error
 	}
 	if (!stat.isFile()) return null;
-	const key = `${stat.mtimeMs}:${stat.size}:${allowFingerprint(extraGlobs)}`;
+	const key = `${stat.ctimeMs}:${stat.mtimeMs}:${stat.size}:${stat.ino}:${allowFingerprint(extraGlobs)}`;
 	const hit = cache.get(target);
 	if (hit && hit.key === key) return hit.result;
 	// Fail CLOSED on "cannot check": silently skipping a 9 MB dump would leak exactly what
 	// this guard exists to stop. The message tells the user how to proceed.
+	//
+	// ctime is part of the key on purpose. mtime and size alone can be restored (`touch -r` on a
+	// file edited to the same length), which would hand back a stale "clean" verdict for content
+	// that is no longer clean — a fail-open with no visible signal. ctime cannot be set from
+	// userspace.
 	if (stat.size > MAX_CHECK_BYTES) {
+		// Ask the engine for the allowlist verdict before refusing on size: `is_allowed` runs BEFORE
+		// any scan, so an allowlisted path answers immediately. Without this the remedy the block
+		// message prints — "declare the path in ~/.anon/allow.txt if it is legitimately public" — was
+		// a dead end for every file past this size, because the size gate returned first.
+		const allowArgs = extraGlobs.flatMap((glob) => [`--allow-glob=${glob}`]);
+		const probe = await runScript(ANON_PY, [target, "--check", "--json", ...allowArgs], ALLOW_PROBE_TIMEOUT_MS);
+		if (!probe.timedOut && probe.code === 0) {
+			try {
+				const parsed = JSON.parse(probe.stdout) as { allowed?: boolean };
+				if (parsed.allowed === true) return { sensitive: false, total: 0, types: {}, findings: [] };
+			} catch {
+				/* no verdict in the output: fall through to blocking, never to allowing */
+			}
+		}
 		return { sensitive: true, total: 1, types: {}, findings: [], toolarge: true };
 	}
 	if (engineFailed) return null;
@@ -629,6 +693,21 @@ function blockMessage(target: string, result: CheckResult, kind: "read" | "conve
 }
 
 export default function (pi: ExtensionAPI) {
+	// Plan mode is read-only, but its gate lives on `tool_call` — and a slash command never fires one.
+	// `/deanon` writes the real values back into a file and `/anon-allow` appends to the allowlist, so
+	// both have to consult the state plan-mode publishes, or the mode's promise is simply not kept for
+	// them. No subscription to miss: plan-mode emits on every change and on every session start.
+	let planModeOn = false;
+	pi.events?.on("plan-mode:state", (data) => {
+		const d = data as { enabled?: boolean } | undefined;
+		if (typeof d?.enabled === "boolean") planModeOn = d.enabled;
+	});
+	const refuseIfReadOnly = (ctx: GuardCtx): boolean => {
+		if (!planModeOn) return false;
+		ctx.ui.notify("Plan mode is read-only — exit plan mode (/plan) before writing files.", "warning");
+		return true;
+	};
+
 	pi.registerFlag("anon-guard", {
 		type: "string",
 		default: "on",
@@ -658,14 +737,14 @@ export default function (pi: ExtensionAPI) {
 		const pathInput = (event.input as { path?: unknown }).path;
 		const resolved = typeof pathInput === "string" ? path.resolve(ctx.cwd, pathInput) : undefined;
 		if (resolved && insideMapsDir(resolved)) {
-			return {
-				block: true,
-				reason:
-					`anon-guard: BLOCKED — ${resolved} is inside ~/.anon/maps/.\n` +
-					"Those maps hold the REAL values behind the placeholders; they must never enter the " +
-					"context. Read the redacted document instead, and re-apply the map only at the end " +
-					"with `deanon.py` (outside the agent).",
-			};
+			return { block: true, reason: mapsBlockReason(resolved) };
+		}
+		// A shell command reaches the same directory without ever naming it in a `path` field, so the
+		// text of the command is checked too. `command` is the only read-capable free-text field here;
+		// scanning a `write`'s content would block writing a document that merely mentions the path.
+		const command = (event.input as { command?: unknown }).command;
+		if (typeof command === "string" && referencesMapsDir(command, ctx.cwd)) {
+			return { block: true, reason: mapsBlockReason(command) };
 		}
 
 		// Only `read` is checked at the source. `doc_to_markdown` is deliberately NOT blocked here:
@@ -812,6 +891,7 @@ export default function (pi: ExtensionAPI) {
 		description:
 			"Restore the real values into a FILE — never into the editor (/deanon <file> [<map-path|map-id>])",
 		handler: async (args, ctx) => {
+			if (refuseIfReadOnly(ctx)) return;
 			const parts = (args || "").trim().split(/\s+/).filter(Boolean);
 			if (!parts.length) {
 				ctx.ui.notify("usage: /deanon <file> [<map-path|map-id>]", "info");
@@ -916,6 +996,7 @@ export default function (pi: ExtensionAPI) {
 		description:
 			"Treat a path as un-sensitive for the guard: append a glob to ~/.anon/allow.txt (/anon-allow <path>)",
 		handler: async (args, ctx) => {
+			if (refuseIfReadOnly(ctx)) return;
 			const target = (args || "").trim();
 			if (!target) {
 				ctx.ui.notify("usage: /anon-allow <path-or-glob>  (a directory becomes /path/*)", "info");

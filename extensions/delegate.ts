@@ -96,8 +96,10 @@ function readWorker(v: unknown): WorkerConfig | null {
 /** Local-only audit log of every delegated brief (post-screening, so secrets never reach disk). */
 const AUDIT_LOG = path.join(homedir(), ".pi", "agent", ".delegate-audit.log");
 
-/** Read-only tool set the delegated model may be granted (never bash/edit/write). */
-const READ_ONLY_TOOLS = "read,ls,find,grep,glob";
+/** Read-only tool set the delegated model may be granted (never bash/edit/write).
+ *  `glob` is NOT in this list: it is not a Pi tool name, and `--tools` silently ignores unknown
+ *  names, so listing it claimed a permission that did not exist. */
+const READ_ONLY_TOOLS = "read,ls,find,grep";
 
 /** Default maximum brief size before we refuse to send (chars). ~40K chars ≈ ~10K tokens. */
 const DEFAULT_MAX_BRIEF_CHARS = 40_000;
@@ -186,13 +188,28 @@ interface ScreenResult {
   redactionCount: number;
 }
 
-/** Clearly-definite secrets: refuse the whole delegation. */
-const DEFINITE_PATTERNS: { name: string; re: RegExp }[] = [
+/** A value that only LOOKS like one: a type annotation, a placeholder, or an indirection to a value
+ *  that is not in the brief at all (`apiKey: string`, `token: process.env.X`, `secret: ${SECRET}`,
+ *  `password: <your-password>`). Refusing a whole delegation on those blocked legitimate work —
+ *  a code excerpt is not a credential. */
+function looksLikeNonSecretValue(value: string): boolean {
+  const v = value.replace(/[;,)\]}"']+$/, "").trim();
+  if (/^(?:string|number|boolean|unknown|any|null|undefined|true|false)$/i.test(v)) return true;
+  if (/^[<$]/.test(v)) return true; // <placeholder>, ${VAR}
+  if (/^(?:process\.env|env\.|os\.environ|import\.meta\.env)/i.test(v)) return true;
+  if (/^[A-Z][A-Z0-9_]{2,}$/.test(v)) return true; // an env-var NAME, not a literal
+  if (/^(?:x{3,}|changeme|your[-_.].*|todo|example)$/i.test(v)) return true;
+  return false;
+}
+
+/** Clearly-definite secrets: refuse the whole delegation. `valueGroup` names the capture holding the
+ *  assigned value, so an obvious non-secret can be discounted before refusing the whole brief. */
+const DEFINITE_PATTERNS: { name: string; re: RegExp; valueGroup?: number }[] = [
   { name: "private key block", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/i },
-  { name: "password assignment", re: /\b(?:password|passwd|pwd)\s*[:=]\s*\S+/i },
-  { name: "secret/token/key assignment", re: /\b(?:secret|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|client[_-]?secret|auth[_-]?token)\s*[:=]\s*\S+/i },
-  { name: "authorization header", re: /authorization\s*:\s*(?:bearer|basic)\s+\S+/i },
-  { name: "credential in URL", re: /(?:postgres|mysql|mongodb(?:\+srv)?|redis|amqp)s?:\/\/[^\s/:]+:[^@\s/]+@/i },
+  { name: "password assignment", re: /\b(?:password|passwd)\s*[:=]\s*(\S+)/i, valueGroup: 1 },
+  { name: "secret/token/key assignment", re: /\b(?:secret|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|client[_-]?secret|auth[_-]?token)\s*[:=]\s*(\S+)/i, valueGroup: 1 },
+  { name: "authorization header", re: /authorization\s*:\s*(?:bearer|basic)\s+(\S+)/i, valueGroup: 1 },
+  { name: "credential in URL", re: /(?:postgres|mysql|mongodb(?:\+srv)?|redis|amqp)s?:\/\/[^\s/:]+:([^@\s/]+)@/i, valueGroup: 1 },
 ];
 
 /** Probably-sensitive (looks like a token but could be a hash/id): redact, do not refuse.
@@ -234,14 +251,15 @@ function auditLog(entry: string): void {
 
 function screenBrief(brief: string): ScreenResult {
   for (const p of DEFINITE_PATTERNS) {
-    if (p.re.test(brief)) {
-      return {
-        refused: true,
-        reason: `refused: brief contains ${p.name} (definitely sensitive). Redact it and retry.`,
-        redacted: brief,
-        redactionCount: 0,
-      };
-    }
+    const m = p.re.exec(brief);
+    if (!m) continue;
+    if (p.valueGroup !== undefined && looksLikeNonSecretValue(m[p.valueGroup] ?? "")) continue;
+    return {
+      refused: true,
+      reason: `refused: brief contains ${p.name} (definitely sensitive). Redact it and retry.`,
+      redacted: brief,
+      redactionCount: 0,
+    };
   }
 
   let redacted = brief;
@@ -374,16 +392,21 @@ function runWorker(
   allowRead: boolean,
   brief: string,
   timeoutSeconds: number,
+  signal?: AbortSignal,
 ): Promise<DelegateOutcome> {
   return new Promise((resolve) => {
     const started = Date.now();
     let tmpDir: string | null = null;
     let tmpPath: string | null = null;
     let settled = false;
+    let timedOut = false;
+    let aborted = false;
+    let onAbort: (() => void) | null = null;
 
     const finish = (outcome: DelegateOutcome) => {
       if (settled) return;
       settled = true;
+      if (signal && onAbort) signal.removeEventListener("abort", onAbort);
       if (tmpPath) try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
       if (tmpDir) try { fs.rmdirSync(tmpDir); } catch { /* ignore */ }
       resolve(outcome);
@@ -421,6 +444,7 @@ function runWorker(
     proc.stderr.on("data", (d) => { err += d.toString(); });
 
     const timer = setTimeout(() => {
+      timedOut = true;
       proc.kill("SIGTERM");
       // SIGKILL incondizionato: kill() su un processo già uscito è un no-op (ritorna false),
       // mentre `proc.killed` è già true dopo la SIGTERM, quindi un guard `if (!proc.killed)`
@@ -428,6 +452,18 @@ function runWorker(
       setTimeout(() => { proc.kill("SIGKILL"); }, 5000).unref?.();
     }, timeoutSeconds * 1000);
     timer.unref?.();
+
+    // The caller's abort must reach the worker: without this the child kept running to its own
+    // timeout, burning tokens on a result nobody would read.
+    onAbort = () => {
+      aborted = true;
+      proc.kill("SIGTERM");
+      setTimeout(() => { proc.kill("SIGKILL"); }, 5000).unref?.();
+    };
+    if (signal) {
+      if (signal.aborted) onAbort();
+      else signal.addEventListener("abort", onAbort, { once: true });
+    }
 
     proc.on("error", (e) => {
       clearTimeout(timer);
@@ -442,7 +478,14 @@ function runWorker(
       } else if (code === 0 && !parsed.text) {
         finish({ ok: false, output: "", error: "delegation returned no usable output", stderr: err, durationMs: Date.now() - started, actualModel: parsed.model });
       } else if (code === null) {
-        finish({ ok: false, output: "", error: `delegation timed out after ${timeoutSeconds}s`, stderr: err, durationMs: Date.now() - started, actualModel: parsed.model });
+        // `code === null` only means "killed by a signal", not "timed out": an external kill was
+        // reported as a timeout, which sends the caller to the wrong diagnosis (retry vs not).
+        const why = aborted
+          ? "delegation aborted by the caller"
+          : timedOut
+            ? `delegation timed out after ${timeoutSeconds}s`
+            : "delegation process was killed before it finished";
+        finish({ ok: false, output: "", error: why, stderr: err, durationMs: Date.now() - started, actualModel: parsed.model });
       } else {
         finish({ ok: false, output: "", error: mapExitError(code, err), stderr: err, durationMs: Date.now() - started, actualModel: parsed.model });
       }
@@ -537,6 +580,9 @@ export default function (pi: ExtensionAPI) {
     parameters: DelegateParams,
 
     async execute(_toolCallId, params, _signal, onUpdate, ctx) {
+      // The abort signal is threaded into the worker: an aborted delegation must not leave a child
+      // running for the rest of its timeout.
+      const signalParam = _signal;
       const cfg = readWorkers();
 
       // List mode
@@ -649,6 +695,7 @@ export default function (pi: ExtensionAPI) {
         params.allowRead === true,
         screen.redacted,
         timeoutSeconds,
+        signalParam,
       );
 
       if (!outcome.ok) {

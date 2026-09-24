@@ -10,13 +10,16 @@ workers.json
 sessions/
 trust.json
 .delegate-audit.log
+hook-audit.log
 .pi/memory/
 
-# Derived caches / dependencies (regenerated or index local content)
-rag/
-npm/
-venvs/
-bin/
+# Derived caches / dependencies (regenerated or index local content).
+# ANCHORED to the repository root on purpose: an unanchored `rag/` also matches
+# `skills/rag/`, and git then silently leaves a shipped skill untracked.
+/rag/
+/npm/
+/venvs/
+/bin/
 
 # Python bytecode
 __pycache__/

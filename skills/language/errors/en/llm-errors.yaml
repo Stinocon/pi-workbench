@@ -1,0 +1,119 @@
+# Language Layer — English LLM-tell catalogue
+# Grammatically correct but machine-sounding. Internal distillation, not copied from third parties.
+# `check` = mechanized in tools/check.py.
+
+errors:
+  - id: llm-err-en-important-to-note
+    category: formulaic-opener
+    wrong: "It's important to note that the daemon is not restartable."
+    right: "The daemon is not restartable."
+    rule_ref: en-llm-formulaic-opener
+    severity: low
+    exceptions: []
+    check: en-llm-formulaic-opener
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-dive-in
+    category: formulaic-opener
+    wrong: "Let's dive into how the scheduler works."
+    right: "Here is how the scheduler works."   # or go straight to it
+    rule_ref: en-llm-formulaic-opener
+    severity: low
+    exceptions: []
+    check: en-llm-formulaic-opener
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-fast-paced-world
+    category: formulaic-opener
+    wrong: "In today's fast-paced world, uptime matters more than ever."
+    right: "Delete it and start with the fact."
+    rule_ref: en-llm-formulaic-opener
+    severity: low
+    exceptions: []
+    check: en-llm-formulaic-opener
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-seamless
+    category: marketing-lexicon
+    wrong: "A seamless and robust integration experience."
+    right: "The integration keeps the index and the file in step."
+    rule_ref: en-llm-marketing-lexicon
+    severity: low
+    exceptions: ["'robust' as a technical property (robust to a malformed frame) is a real claim"]
+    check: en-llm-marketing-lexicon
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-leverage
+    category: marketing-lexicon
+    wrong: "Leverage the existing cache to unlock performance."
+    right: "Read from the existing cache."
+    rule_ref: en-llm-marketing-lexicon
+    severity: low
+    exceptions: ["'leverage' as a noun in finance"]
+    check: en-llm-marketing-lexicon
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-testament
+    category: hollow-compound
+    wrong: "This release is a testament to the team's commitment."
+    right: "This release fixes the four crash reports from August."
+    rule_ref: en-llm-hollow-compound
+    severity: low
+    exceptions: []
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-nominalization
+    category: nominalization
+    wrong: "We performed the implementation of the retry logic."
+    right: "We implemented the retry logic."
+    rule_ref: en-llm-nominalization
+    severity: low
+    exceptions: ["when the process itself is the subject: signature verification happens before storage"]
+    check: en-llm-nominalization
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-connector-stack
+    category: connector-repetition
+    wrong: "Moreover, the index is stale. Moreover, the cache is cold."
+    right: "The index is stale and the cache is cold."
+    rule_ref: en-llm-connector-repetition
+    severity: low
+    exceptions: []
+    check: en-llm-connector-repetition
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-restating
+    category: restatement
+    wrong: "The index is incremental. In other words, it only reads changed files."
+    right: "It only reads changed files."
+    rule_ref: en-llm-restating-nothing
+    severity: low
+    exceptions: ["a genuine plain-language translation of a technical term"]
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-closing-flourish
+    category: closing-flourish
+    wrong: "And that's why local-first matters."
+    right: "End on the honest conclusion, including one that is a failure."
+    rule_ref: en-llm-closing-flourish
+    severity: low
+    exceptions: []
+    source: "internal LLM-tell catalogue"
+
+  - id: llm-err-en-fake-precision
+    category: fake-precision
+    wrong: "This makes the service 3.2x faster for 47% of users."
+    right: "This removes one round trip per request (measured on the staging fleet)."
+    rule_ref: en-llm-fake-precision
+    severity: medium
+    exceptions: ["a figure with a named source and a measurement method"]
+    source: "regola di onestà (AGENTS.md §2)"
+
+  - id: llm-err-en-em-dash
+    category: punctuation-tell
+    wrong: "The fix is small — a bounds check — and it lands in the parser — the hot path — today."
+    right: "The fix is small (a bounds check) and lands in the parser, the hot path, today."
+    rule_ref: en-llm-em-dash-overuse
+    severity: low
+    exceptions: ["one em dash for a genuine interruption is fine"]
+    source: "internal LLM-tell catalogue"

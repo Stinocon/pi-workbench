@@ -1,0 +1,157 @@
+# Language Layer — English grammar error catalogue
+# Each entry: wrong/right/rule_ref/severity/exceptions. Fed to the critic pass as few-shot data
+# (the critic receives them as DATA and reports, never rewrites on its own).
+# Sources name the reference work, or say plainly that the entry is an internal distillation.
+
+errors:
+  - id: en-err-its-possessive
+    category: apostrophe
+    wrong: "The service lost it's connection."
+    right: "The service lost its connection."
+    rule_ref: en-its-its
+    severity: high
+    exceptions: ["'it's' is correct when it means 'it is' or 'it has'"]
+    check: en-its-possessive
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-its-plural
+    category: apostrophe
+    wrong: "The service lost its' connection."
+    right: "The service lost its connection."
+    note: "There is no `its'` in English, possessive or otherwise."
+    rule_ref: en-its-its
+    severity: high
+    exceptions: []
+    check: en-its-possessive
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-your-youre
+    category: homophone
+    wrong: "Your running an old version."
+    right: "You're running an old version."
+    rule_ref: en-your-youre
+    severity: high
+    exceptions: ["'your' before a noun is correct: your configuration"]
+    check: en-your-youre
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-their-there
+    category: homophone
+    wrong: "Their are three replicas."
+    right: "There are three replicas."
+    rule_ref: en-their-there-theyre
+    severity: high
+    exceptions: ["'their' before a noun is correct: their servers"]
+    check: en-their-there
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-could-of
+    category: auxiliary
+    wrong: "I should of checked the logs."
+    right: "I should have checked the logs."
+    rule_ref: en-could-of
+    severity: high
+    exceptions: ["'could've' is acceptable in informal registers"]
+    check: en-could-of
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-between-you-and-i
+    category: pronoun-case
+    wrong: "Between you and I, the estimate is optimistic."
+    right: "Between you and me, the estimate is optimistic."
+    rule_ref: en-between-you-and-i
+    severity: high
+    exceptions: []
+    check: en-between-you-and-i
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-less-fewer
+    category: usage
+    wrong: "Less requests reached the backend."
+    right: "Fewer requests reached the backend."
+    rule_ref: en-less-fewer
+    severity: medium
+    exceptions: ["measures: less than 20 MB; less time"]
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-there-is-plural
+    category: agreement
+    wrong: "There is three replicas."
+    right: "There are three replicas."
+    rule_ref: en-there-is-plural
+    severity: medium
+    exceptions: ["informal speech only"]
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-double-negative
+    category: negation
+    wrong: "We didn't lose nothing."
+    right: "We lost nothing. / We didn't lose anything."
+    rule_ref: en-double-negative
+    severity: medium
+    exceptions: ["deliberate dialect or character voice"]
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-singular-countable
+    category: article
+    wrong: "We received an information about the outage."
+    right: "We received information about the outage."
+    rule_ref: en-article-countable
+    severity: medium
+    exceptions: ["'an information' is correct only as a count noun in technical usage: an information system"]
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-preposition
+    category: collocation
+    wrong: "The design complies to the spec."
+    right: "The design complies with the spec."
+    rule_ref: en-preposition-collocation
+    severity: medium
+    exceptions: []
+    source: "standard English usage — Merriam-Webster's Dictionary of English Usage"
+
+  - id: en-err-conditional
+    category: verb-form
+    wrong: "If we would have tested it, we would have caught the bug."
+    right: "If we had tested it, we would have caught the bug."
+    rule_ref: en-conditional-tense
+    severity: medium
+    exceptions: []
+    source: "standard English usage — The Chicago Manual of Style"
+
+  - id: en-err-dangling-modifier
+    category: syntax
+    wrong: "After analysing the logs, the regression was obvious."
+    right: "After analysing the logs, we found the regression obvious."
+    note: "The sentence is not ungrammatical, but the actor of the participle is not the subject — the reader has to reconstruct it."
+    rule_ref: en-dangling-modifier
+    severity: medium
+    exceptions: ["when the actor is genuinely irrelevant and the phrase is a set formula"]
+    source: "standard English usage — The Chicago Manual of Style"
+
+  - id: en-err-comma-splice
+    category: punctuation
+    wrong: "The index was stale, we rebuilt it."
+    right: "The index was stale, so we rebuilt it."
+    rule_ref: en-punct-comma-splice
+    severity: medium
+    exceptions: ["a deliberate, very short asyndetic pair in narrative prose"]
+    source: "standard English usage — The Chicago Manual of Style"
+
+  - id: en-err-possessive-plural
+    category: apostrophe
+    wrong: "The two handler's timeouts differ."
+    right: "The two handlers' timeouts differ."
+    rule_ref: en-punct-possessive-apostrophe
+    severity: medium
+    exceptions: []
+    source: "standard English usage — The Chicago Manual of Style"
+
+  - id: en-err-unit-plural
+    category: units
+    wrong: "The body is capped at 12 MBs."
+    right: "The body is capped at 12 MB."
+    rule_ref: en-punct-abbreviation-spacing
+    severity: low
+    exceptions: ["minutes is 'min', and 30 mins is informal — prefer 30 min"]
+    source: "standard English usage — The Chicago Manual of Style"

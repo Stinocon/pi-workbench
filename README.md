@@ -26,6 +26,23 @@ uses every day are available to you.
   preferences: never invent unvalidated information, a declared gap beats an invented value,
   doc-sync in the same commit, commit-and-push as one operation.
 
+## How this repository is maintained
+
+This is a **hand-curated distribution**, not a mirror of anybody's live `~/.pi/agent`. It exists so the
+setup can be reproduced elsewhere, so it is generalized on purpose: model ids and provider names live
+in `workers.json` instead of the source, project-specific wording is dropped, and the extensions that
+only make sense on one machine (`config-sync`, `mtplx-autostart`, `mtplx-request-policy`) and the
+skills that encode one person's voice or infrastructure (`voice`, `mikromcp`, `homeassistant`) are not
+shipped here at all.
+
+The consequence, stated plainly: **nothing keeps the two copies in step automatically.** Bug fixes
+must be ported by hand, and a fix that only lands in the private copy leaves this distribution
+shipping the bug. Two gates narrow the gap for the part that matters most — `check-anon-guard.cjs`
+runs the guard's behaviour here (the maps hard-block, the fail-closed paths, the size cap) and
+`check-skill-yaml.cjs` refuses a rule file that does not parse — but neither can see a divergence in
+code they do not drive. When you change a guard, a gate or a rule file in your own copy, port it here
+and re-run `node scripts/check-anon-guard.cjs` before you publish.
+
 ---
 
 ## Structure
@@ -56,7 +73,8 @@ extensions/
 ├── session-memory.ts         /note + /memory + memory tools + protected decisions + resume state (L2)
 ├── web.ts                    web_fetch + web_search tools (SSRF-guarded, keyless DDG search)
 ├── docs.ts                   doc_to_markdown tool (anydoc; office/PDF → Markdown, local)
-├── rag-autoload.ts           auto-indexes the project RAG on session start (incremental)
+├── rag-autoload.ts           auto-indexes the project RAG on session start (incremental; skips
+│                             nested repos, so a parent-folder launch does not re-index them)
 ├── routing.ts                deterministic routing policy + authority hierarchy (L0-L3) injected
 │                             into the system prompt
 ├── compact-tool.ts           compact tool — model-callable context compaction (schedules at turn end)
@@ -76,6 +94,7 @@ scripts/
 ├── check-config-docs.sh      deterministic gate: README tree + skills ↔ real dirs (refuses commit on drift)
 ├── check-extensions.cjs      deterministic gate: jiti parse-check of every extension
 ├── check-skill-frontmatter.cjs deterministic gate: YAML-parse every skill frontmatter
+├── check-skill-yaml.cjs      deterministic gate: every YAML file under skills/ must PARSE (a rule file that does not parse is data nobody can read)
 ├── check-drift.sh            READ-ONLY: repos whose local content GitHub lacks (drift gate)
 └── pi-preflight.zsh          source from ~/.zshrc: parse-check the live extensions before every `pi` launch
 skills/
@@ -459,7 +478,7 @@ full `SKILL.md` when a task matches.
 - **dispatch** — Calibrate effort before executing a non-trivial task: split into sub-tasks, classify each against the miner-* tier rubric, hand mechanical slices to parallel workers, keep the correctness-critical core inline.
 - **docs** — Convert office documents (Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, CSV, PDF) into clean GitHub-Flavored Markdown with anydoc. Local, no Docker, no per-project deps.
 - **find-skills** — Discover and install agent skills when the user asks "how do I do X" or "is there a skill that can…".
-- **language** — Deterministic, data-driven rules for grammatical correctness, register and LLM-typical error avoidance (Italian; extensible to other languages). The correctness layer, with a deterministic checker.
+- **language** — Deterministic, data-driven rules for grammatical correctness, register and LLM-typical error avoidance, in Italian and English. The correctness layer, with a deterministic checker (`--lang it|en|all`).
 - **memory** — Persistent, searchable memory across sessions (FTS5) plus a structured decision/invariant store (`.pi/decisions/`) with evidence-based verification and append-only protection.
 - **open-hardware-firmware** — Design, document and publish open hardware and embedded firmware (ESP32/ESPHome, OpenSCAD, 3D prints): design-notes as the reasoning hub, honest about the unbuilt.
 - **rag** — Universal local retrieval over a project's text files (SQLite FTS5 + BM25). Retrieve relevant snippets with file paths; nothing leaves the machine.

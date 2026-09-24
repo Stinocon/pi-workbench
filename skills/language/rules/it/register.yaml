@@ -53,7 +53,6 @@ lexicon:
     right: "compromissione"
     note: "'Compromesso' = accordo/patteggiamento. La violazione di sicurezza è 'compromissione'. Mai confonderli nei report tecnici."
     register: [tecnico, professionale]
-    check: it-lessico-compromesso
     source: "correzione d'uso registrata 2026-08-27 (fonte unica qui)"
 
   - id: it-lex-diversivo
@@ -77,5 +76,4 @@ borrowings:
     right: "stare per + infinito: 'si sta per cominciare'"
     note: "Francesismo da evitare."
     register: all
-    check: it-calco-andare-a
     source: "grammatica-italiana.dossier.net — Errori (voce 'andare')"

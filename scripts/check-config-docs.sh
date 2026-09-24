@@ -69,10 +69,33 @@ for a in $tree_agents; do
 done
 
 if grep -qE 'for s in .*; do' docs/FRESH_START.md; then
-  bad "docs/FRESH_START.md hardcodes a skills loop — use 'cp -r skills/*/'"
+  bad "docs/FRESH_START.md hardcodes a skills loop — use 'cp -r skills/.'"
 fi
-if ! grep -qE 'cp -r skills/\*/' docs/FRESH_START.md; then
-  bad "docs/FRESH_START.md does not restore skills via glob 'cp -r skills/*/'"
+
+# --- every skill directory must be TRACKED ------------------------------------
+# A `.gitignore` pattern meant for a derived directory can silently swallow a shipped one:
+# `rag/` (the derived index dir) also matches `skills/rag/`, which left this repository documenting
+# a skill its clone did not contain. Git applies ignore rules only to untracked paths, so the file
+# was present in the working tree and invisible in `git status` — the failure is silent by
+# construction. The gate asks git directly, per skill directory.
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    name=$(basename "$d")
+    n=$(git ls-files -- "$d" | wc -l | tr -d ' ')
+    [ "$n" = "0" ] && bad "skills/$name/ has no tracked file (.gitignore shadowing it?) — a clone would not have this skill"
+  done <<< "$(find skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null)"
+fi
+# 'cp -r skills/*/' looks right and is wrong: on macOS/BSD a trailing slash on the SOURCES makes cp
+# copy the CONTENTS of each skill into the destination. Measured: 20 skills collapse into a single
+# SKILL.md, the last one wins, and the restore reports success. Only a real COMMAND line counts — the
+# note below the block legitimately names the wrong form while explaining it, and a gate that fails on
+# its own explanation is a gate someone deletes.
+if grep -vE '^[[:space:]]*(>|#)' docs/FRESH_START.md | grep -qE 'cp -r skills/\*/'; then
+  bad "docs/FRESH_START.md restores skills with 'cp -r skills/*/' — that flattens them on macOS; use 'cp -r skills/.'"
+fi
+if ! grep -qE 'cp -r skills/\.' docs/FRESH_START.md; then
+  bad "docs/FRESH_START.md does not restore skills via 'cp -r skills/.'"
 fi
 
 if [ "$fail" = 1 ]; then

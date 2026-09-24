@@ -8,10 +8,15 @@ prioritized over coverage — ambiguous cases (e.g. "colla" noun vs "con la") st
 the YAML and are deliberately NOT mechanized here.
 
 Uso:
-    check.py check "testo"      # JSON issues: {span, rule_id, severity, suggestion, confidence}
-    check.py check -            # read text from stdin
-    check.py rules              # list active rules
-    check.py test               # run test_check.py (a rule without a test is not valid)
+    check.py check "testo"          # JSON issues: {span, rule_id, severity, suggestion, confidence}
+    check.py check -                # read text from stdin
+    check.py check "text" --lang en # only the English rules (it|en|all; default all)
+    check.py rules                  # list active rules
+    check.py test                   # run test_check.py (a rule without a test is not valid)
+
+Language: the two rule sets are high-precision regexes, so running both (the default) is safe on
+monolingual text and never misses a rule because the language was guessed wrong. `--lang` narrows
+the set when you know which one applies.
 
 Confidence: deterministic orthography ~0.9+, grammar patterns ~0.7-0.85, LLM-tell hints ~0.4-0.6.
 """
@@ -49,6 +54,15 @@ PATTERN_RULES = [
         "suggestion": "po'",
         "severity": "high",
         "confidence": 0.95,
+        "register": "all",
+    },
+    {
+        "id": "it-accento-e",
+        "name": "'E'' al posto di 'È' (accento grave reso con apostrofo)",
+        "pattern": r"\b[eE]['\u2019](?=[\s,.;:!?]|$)",
+        "suggestion": "È (accento grave, non apostrofo)",
+        "severity": "high",
+        "confidence": 0.9,
         "register": "all",
     },
     {
@@ -164,6 +178,110 @@ PATTERN_RULES = [
 ]
 
 
+# EN pattern rules. Same contract: high precision first, coverage second. `robust` and
+# `comprehensive` are deliberately NOT in the marketing pattern — both have real technical senses
+# (robust to a malformed frame), and a rule that flags a correct sentence teaches the reader to
+# ignore the checker. `unlock`, `empower` and `elevate` stay in the YAML guidance, where the model
+# judges context, rather than in a regex that cannot.
+PATTERN_RULES_EN = [
+    {
+        "id": "en-its-possessive",
+        "name": "its' (no such form)",
+        "pattern": r"\bits['\u2019]",
+        "suggestion": "its (the possessive takes no apostrophe)",
+        "severity": "high",
+        "confidence": 0.95,
+        "register": "all",
+    },
+    {
+        "id": "en-your-youre",
+        "name": "'your' + article (you're expected)",
+        "pattern": r"\byour\s+(?:a|an|the)\b",
+        "suggestion": "you're (you are)",
+        "severity": "high",
+        "confidence": 0.9,
+        "register": "all",
+    },
+    {
+        "id": "en-their-there",
+        "name": "'their' + verb 'to be' (there expected)",
+        "pattern": r"\btheir\s+(?:is|are|was|were|will be|has been|have been)\b",
+        "suggestion": "there (existential) — 'their' is the possessive",
+        "severity": "high",
+        "confidence": 0.92,
+        "register": "all",
+    },
+    {
+        "id": "en-could-of",
+        "name": "'could/should/would of' instead of 'have'",
+        "pattern": r"\b(?:could|should|would|might|must)\s+of\b",
+        "suggestion": "could have / should have / would have",
+        "severity": "high",
+        "confidence": 0.93,
+        "register": "all",
+    },
+    {
+        "id": "en-between-you-and-i",
+        "name": "'between you and I' (objective case expected)",
+        "pattern": r"\bbetween\s+you\s+and\s+I\b",
+        "suggestion": "between you and me",
+        "severity": "high",
+        "confidence": 0.93,
+        "register": "all",
+    },
+    {
+        "id": "en-llm-formulaic-opener",
+        "name": "formulaic opener/closer",
+        "pattern": (
+            r"\bit(?:['\u2019]s| is)\s+(?:important|worth)\s+(?:to note|noting|mentioning)\b"
+            r"|\bin conclusion,?\s+we can say\b"
+            r"|\bin today(?:['\u2019]s)\s+fast-?paced world\b"
+            r"|\blet(?:['\u2019]s)\s+dive in\b"
+            r"|\bwithout further ado\b"
+            r"|\bin this (?:article|post|guide),?\s+we(?:['\u2019]ll| will)\b"
+        ),
+        "suggestion": "delete the formula and state the fact",
+        "severity": "low",
+        "confidence": 0.55,
+        "register": "all",
+    },
+    {
+        "id": "en-llm-marketing-lexicon",
+        "name": "marketing lexicon",
+        "pattern": (
+            r"\b(?:seamless(?:ly)?|cutting-edge|game-?chang(?:er|ing)|world-class|effortless(?:ly)?"
+            r"|supercharg(?:e|ed|ing)|delv(?:e|es|ed|ing) into|leverag(?:e|es|ed|ing))\b"
+        ),
+        "suggestion": "replace it with the concrete claim it stands in for",
+        "severity": "low",
+        "confidence": 0.5,
+        "register": "all",
+    },
+    {
+        "id": "en-llm-nominalization",
+        "name": "nominalization where a verb would do",
+        "pattern": (
+            r"\bthe (?:implementation|utilisation|utilization|performance|facilitation|execution"
+            r"|realisation|realization) of\b"
+        ),
+        "suggestion": "prefer the verb (we implemented, we executed)",
+        "severity": "low",
+        "confidence": 0.6,
+        "register": "all",
+    },
+]
+
+# Rule sets by language, and the default: both, in this order.
+PATTERN_RULES_BY_LANG = {"it": PATTERN_RULES, "en": PATTERN_RULES_EN}
+ALL_PATTERN_RULES = PATTERN_RULES + PATTERN_RULES_EN
+
+ENGLISH_CONNECTORS = r"\b(?:Moreover|Furthermore|Additionally|In addition)"
+
+
+def _resolve_langs(lang: str) -> tuple[str, ...]:
+    return tuple(PATTERN_RULES_BY_LANG) if lang == "all" else (lang,)
+
+
 def _find_pattern_issues(text: str, rule: dict) -> list[dict]:
     """Return issue dicts for every match of rule['pattern'] in text."""
     issues = []
@@ -180,10 +298,10 @@ def _find_pattern_issues(text: str, rule: dict) -> list[dict]:
     return issues
 
 
-def _find_repetition_issues(text: str) -> list[dict]:
+def _find_repetition_issues(text: str, langs: tuple[str, ...]) -> list[dict]:
     """Immediate word duplication (typo) and repeated sentence-initial connectors."""
     issues = []
-    # Duplicazione immediata di parola: "il il", "di di", ...
+    # Duplicazione immediata di parola: "il il", "di di", ... (vale per ogni lingua)
     for m in re.finditer(r"\b(\w+)\s+\1\b", text, re.IGNORECASE):
         issues.append({
             "span": [m.start(), m.end()],
@@ -195,50 +313,91 @@ def _find_repetition_issues(text: str) -> list[dict]:
             "suggestion": "rimuovere la ripetizione",
         })
     # Connettivi ripetuti a inizio frase ravvicinata
-    connectors = re.findall(r"\b(?:Inoltre|Tuttavia|D'altro canto|D'altronde)\b", text, re.IGNORECASE)
-    if len(connectors) >= 2:
-        issues.append({
-            "span": [0, 0],
-            "match": ", ".join(connectors),
-            "rule_id": "llm-connettivo-ripetuto",
-            "name": "connettivi ripetuti",
-            "severity": "low",
-            "confidence": 0.6,
-            "suggestion": "coordinare invece di accumulare connettivi",
-        })
+    if "it" in langs:
+        connectors = re.findall(r"\b(?:Inoltre|Tuttavia|D'altro canto|D'altronde)\b", text, re.IGNORECASE)
+        if len(connectors) >= 2:
+            issues.append({
+                "span": [0, 0],
+                "match": ", ".join(connectors),
+                "rule_id": "llm-connettivo-ripetuto",
+                "name": "connettivi ripetuti",
+                "severity": "low",
+                "confidence": 0.6,
+                "suggestion": "coordinare invece di accumulare connettivi",
+            })
+    if "en" in langs:
+        connectors = re.findall(ENGLISH_CONNECTORS, text, re.IGNORECASE)
+        if len(connectors) >= 2:
+            issues.append({
+                "span": [0, 0],
+                "match": ", ".join(connectors),
+                "rule_id": "en-llm-connector-repetition",
+                "name": "repeated sentence-initial connectors",
+                "severity": "low",
+                "confidence": 0.6,
+                "suggestion": "coordinate the clauses instead of stacking connectives",
+            })
     return issues
 
 
-def check_text(text: str) -> list[dict]:
-    """Run all rules over text and return a sorted list of issue dicts."""
+def _find_em_dash_issues(text: str) -> list[dict]:
+    """Two or more em dashes in one paragraph: the punctuation becomes the rhythm."""
+    issues = []
+    offset = 0
+    for paragraph in re.split(r"(\n\s*\n)", text):
+        if paragraph and not re.fullmatch(r"\n\s*\n", paragraph):
+            count = paragraph.count("\u2014")
+            if count >= 2:
+                issues.append({
+                    "span": [offset, offset + len(paragraph)],
+                    "match": f"{count} em dashes",
+                    "rule_id": "en-llm-em-dash-overuse",
+                    "name": "em dash overuse in one paragraph",
+                    "severity": "low",
+                    "confidence": 0.4,
+                    "suggestion": "use a colon, a comma or a full stop; keep at most one em dash",
+                })
+        offset += len(paragraph)
+    return issues
+
+
+def check_text(text: str, langs: tuple[str, ...] = ("it", "en")) -> list[dict]:
+    """Run the rules of the given languages over text and return a sorted list of issue dicts."""
     issues: list[dict] = []
-    for rule in PATTERN_RULES:
-        issues.extend(_find_pattern_issues(text, rule))
-    issues.extend(_find_repetition_issues(text))
+    for lang in langs:
+        for rule in PATTERN_RULES_BY_LANG[lang]:
+            issues.extend(_find_pattern_issues(text, rule))
+    issues.extend(_find_repetition_issues(text, langs))
+    if "en" in langs:
+        issues.extend(_find_em_dash_issues(text))
     # Ordina per gravità decrescente, poi per posizione.
     sev_order = {"high": 0, "medium": 1, "low": 2}
     issues.sort(key=lambda i: (sev_order.get(i["severity"], 3), i["span"][0]))
     return issues
 
 
-def _rules_table() -> str:
+def _rules_table(langs: tuple[str, ...]) -> str:
     lines = []
-    for r in PATTERN_RULES:
-        lines.append(f"{r['id']:<40} {r['severity']:<7} conf={r['confidence']:.2f}  {r['name']}")
+    for lang in langs:
+        for r in PATTERN_RULES_BY_LANG[lang]:
+            lines.append(f"{r['id']:<40} {r['severity']:<7} conf={r['confidence']:.2f}  {r['name']}")
     return "\n".join(lines)
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Deterministic language checker for pi (Italian).")
+    ap = argparse.ArgumentParser(description="Deterministic language checker for pi (Italian + English).")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p_chk = sub.add_parser("check", help="check a text and emit JSON issues")
     p_chk.add_argument("text", help="text to check, or '-' to read from stdin")
-    sub.add_parser("rules", help="list active rules")
+    p_chk.add_argument("--lang", choices=["it", "en", "all"], default="all",
+                       help="rule set to apply (default: all — both sets are high-precision)")
+    p_rul = sub.add_parser("rules", help="list active rules")
+    p_rul.add_argument("--lang", choices=["it", "en", "all"], default="all")
     sub.add_parser("test", help="run test_check.py")
     args = ap.parse_args()
 
     if args.cmd == "rules":
-        print(_rules_table())
+        print(_rules_table(_resolve_langs(args.lang)))
         return
     if args.cmd == "test":
         import test_check  # local, same directory
@@ -249,7 +408,7 @@ def main() -> None:
         text = sys.stdin.read()
     else:
         text = args.text
-    issues = check_text(text)
+    issues = check_text(text, _resolve_langs(args.lang))
     print(json.dumps({"issues": issues, "count": len(issues)}, ensure_ascii=False, indent=2))
 
 

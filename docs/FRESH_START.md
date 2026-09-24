@@ -47,11 +47,14 @@ cp ~/pi-workbench/extensions/plan-mode/index.ts ~/pi-workbench/extensions/plan-m
 mkdir -p "$DEST/extensions/subagent"
 cp ~/pi-workbench/subagent/index.ts ~/pi-workbench/subagent/agents.ts "$DEST/extensions/subagent/"
 
-cp -r skills/*/ "$DEST/skills/"
+cp -r skills/. "$DEST/skills/"
 ```
 
-> The last line must remain a glob (`cp -r skills/*/`), not a hand-written loop — a hardcoded
-> list drifts when skills are added/renamed. The `check-config-docs.sh` gate enforces this.
+> The last line must stay a glob on the CONTENTS (`cp -r skills/.`), not a hand-written loop and
+> not `cp -r skills/*/`. A hardcoded list drifts when skills are added or renamed — but the trailing
+> slash on the SOURCES is worse: on macOS/BSD `cp` then copies each directory's *contents* into the
+> destination. Measured: 20 skills collapse into a single `SKILL.md`, last one wins, and the restore
+> reports success. `check-config-docs.sh` enforces this form.
 
 ## 4. Configure your models
 
