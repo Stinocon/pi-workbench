@@ -10,7 +10,8 @@
 # intentional WIP; reconciling them is a deliberate, gate-approved decision. The
 # point of this scanner is to make "content drift" observable, not to auto-fix it.
 #
-# Scope default: $HOME (git-managed, GitHub-publishable repos).
+# Scope default: git repositories under $HOME, at depth <= 4 (git-managed, GitHub-publishable
+# repos normally live under a tree like ~/sviluppo/github.com/<owner>/).
 # Override with DRIFT_BASE, or pass explicit repo paths as arguments.
 set -uo pipefail
 
@@ -20,11 +21,23 @@ declare -a REPOS=()
 if [ "$#" -gt 0 ]; then
 	REPOS=("$@")
 else
-	for d in "$BASE"/*/; do
-		[ -d "$d" ] || continue
-		[ -d "$d/.git" ] || continue   # skip non-git dirs
-		REPOS+=("${d%/}")
-	done
+	# A one-level "$BASE/*/" scan finds essentially nothing in a normal layout, which made the
+	# default scope useless. Walk a modest depth and skip the heavy/derived trees.
+	while IFS= read -r g; do
+		[ -n "$g" ] && REPOS+=("$(dirname "$g")")
+	done < <(
+		find "$BASE" -maxdepth 4 -type d -name .git \
+			-not -path "*/node_modules/*" -not -path "*/.cache/*" \
+			-not -path "*/Library/*" -not -path "*/.Trash/*" 2>/dev/null
+	)
+fi
+
+# Expanding an empty array under `set -u` is an "unbound variable" error on bash 3.2 (macOS),
+# which turned a default run with nothing in scope into a crash instead of a report.
+if [ "${#REPOS[@]}" -eq 0 ]; then
+	echo "check-drift: no git repositories found under $BASE." >&2
+	echo "check-drift: set DRIFT_BASE, or pass repository paths as arguments." >&2
+	exit 0
 fi
 
 drift=0
