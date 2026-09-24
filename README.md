@@ -39,7 +39,8 @@ The consequence, stated plainly: **nothing keeps the two copies in step automati
 must be ported by hand, and a fix that only lands in the private copy leaves this distribution
 shipping the bug. Two gates narrow the gap for the part that matters most — `check-anon-guard.cjs`
 runs the guard's behaviour here (the maps hard-block, the fail-closed paths, the size cap) and
-`check-skill-yaml.cjs` refuses a rule file that does not parse — but neither can see a divergence in
+`check-skill-yaml.cjs` refuses a rule file that does not parse, `test-web-guard.mjs` holds the SSRF
+address pin and `test-delegate-spawn.mjs` holds the worker's failure reporting — but none of them can see a divergence in
 code they do not drive. When you change a guard, a gate or a rule file in your own copy, port it here
 and re-run `node scripts/check-anon-guard.cjs` before you publish.
 
@@ -71,7 +72,8 @@ extensions/
 ├── statusline.ts             /statusline — Claude Code-style status line footer
 ├── startup-commands.ts       login "MOTD": lists custom commands at startup (widget, auto-clears)
 ├── session-memory.ts         /note + /memory + memory tools + protected decisions + resume state (L2)
-├── web.ts                    web_fetch + web_search tools (SSRF-guarded, keyless DDG search)
+├── web.ts                    web_fetch + web_search tools: SSRF-guarded (incl. IPv4-mapped IPv6),
+│                             connection PINNED to the validated address, streaming size cap
 ├── docs.ts                   doc_to_markdown tool (anydoc; office/PDF → Markdown, local)
 ├── rag-autoload.ts           auto-indexes the project RAG on session start (incremental; skips
 │                             nested repos, so a parent-folder launch does not re-index them)
@@ -95,6 +97,8 @@ scripts/
 ├── check-extensions.cjs      deterministic gate: jiti parse-check of every extension
 ├── check-skill-frontmatter.cjs deterministic gate: YAML-parse every skill frontmatter
 ├── check-skill-yaml.cjs      deterministic gate: every YAML file under skills/ must PARSE (a rule file that does not parse is data nobody can read)
+├── test-web-guard.mjs        deterministic gate: drives the SSRF guard — the pin, the cap, the predicates
+├── test-delegate-spawn.mjs   deterministic gate: drives delegate's failure paths (signal, abort, timeout) against a stub worker
 ├── check-drift.sh            READ-ONLY: repos whose local content GitHub lacks (drift gate)
 └── pi-preflight.zsh          source from ~/.zshrc: parse-check the live extensions before every `pi` launch
 skills/

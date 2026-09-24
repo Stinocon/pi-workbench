@@ -341,6 +341,12 @@ function buildBrief(params: {
 // ---------------------------------------------------------------------------
 
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
+  // Test seam: the spawn/abort/timeout paths cannot be exercised against a real worker (that costs
+  // money and needs a provider), and a path nobody drives is a path that breaks silently. This adds
+  // no new authority — the extension already runs with the user's permissions, and PATH already
+  // decides what `pi` means — it only names the choice so a test can make it.
+  const override = process.env.PI_DELEGATE_SPAWN;
+  if (override) return { command: override, args };
   const currentScript = process.argv[1];
   const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
   if (currentScript && !isBunVirtualScript && existsSync(currentScript)) {
@@ -565,6 +571,11 @@ const DelegateParams = Type.Object({
     description: "Timeout in seconds. Default 600.",
   })),
 });
+
+// Exported for the regression test: `runWorker`'s failure paths (signal death, abort, timeout) are
+// not reachable through the tool — its timeout is clamped to 10s and its signal comes from Pi — and
+// an untested failure path is exactly where a crash gets reported as success.
+export { runWorker };
 
 export default function (pi: ExtensionAPI) {
   pi.registerTool({

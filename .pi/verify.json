@@ -1,11 +1,37 @@
 {
   "gates": [
-    { "name": "config-docs", "command": "bash scripts/check-config-docs.sh" },
-    { "name": "extensions", "command": "node scripts/check-extensions.cjs" },
-    { "name": "skills", "command": "node scripts/check-skill-frontmatter.cjs" },
-    { "name": "skill-yaml", "command": "node scripts/check-skill-yaml.cjs" },
-    { "name": "language-rules", "command": "python3 skills/language/tools/check.py test && python3 skills/language/tools/check_rule_refs.py" },
-    { "name": "anon-guard", "command": "node scripts/check-anon-guard.cjs -q" }
+    {
+      "name": "config-docs",
+      "command": "bash scripts/check-config-docs.sh"
+    },
+    {
+      "name": "extensions",
+      "command": "node scripts/check-extensions.cjs"
+    },
+    {
+      "name": "skills",
+      "command": "node scripts/check-skill-frontmatter.cjs"
+    },
+    {
+      "name": "skill-yaml",
+      "command": "node scripts/check-skill-yaml.cjs"
+    },
+    {
+      "name": "language-rules",
+      "command": "python3 skills/language/tools/check.py test && python3 skills/language/tools/check_rule_refs.py"
+    },
+    {
+      "name": "anon-guard",
+      "command": "node scripts/check-anon-guard.cjs -q"
+    },
+    {
+      "name": "web-guard",
+      "command": "node scripts/test-web-guard.mjs"
+    },
+    {
+      "name": "delegate-spawn",
+      "command": "node scripts/test-delegate-spawn.mjs"
+    }
   ],
   "timeoutMs": 180000,
   "maxIterations": 3
