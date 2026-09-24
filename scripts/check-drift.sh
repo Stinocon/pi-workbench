@@ -65,7 +65,16 @@ for repo in "${REPOS[@]}"; do
 
 	flag="OK"
 	# hard drift = content GitHub does not yet have: modified tracked file, staged, or unpushed
-	if [ "$dirty_t" -gt 0 ] || [ "$staged" = 1 ] || [ "${ahead:-0}" != 0 ]; then
+	# `?` means "the push target is unknown", which is not the same as "nothing pending" — and it is
+	# not drift either. The earlier fix printed `?` but let it fall into this test, so a clean repo
+	# with no upstream was reported DRIFT.
+	unpushed=0
+	case "${ahead:-0}" in
+		0|"") unpushed=0 ;;
+		"?"|"") unpushed=0 ;;   # unknown: visible in the line, not a verdict
+		*) unpushed=1 ;;
+	esac
+	if [ "$dirty_t" -gt 0 ] || [ "$staged" = 1 ] || [ "$unpushed" = 1 ]; then
 		drift=1; flag="DRIFT"
 	else
 		[ "$untracked" -gt 0 ] && flag="UNTRACKED"

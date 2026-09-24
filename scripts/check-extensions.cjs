@@ -100,9 +100,26 @@ if (files.length === 0) {
 const base = target ? target : REPO;
 let parseErrors = 0;
 let loadErrors = 0;
+
+// A factory that throws is a startup abort too, and `jiti(f)` alone never sees it: it evaluates the
+// module's TOP LEVEL, while pi's loader calls the default export. So the export is called here with a
+// stub API — a Proxy that answers any method with a no-op, so a factory that only registers things
+// cannot fail on the stub itself. Pi's own docs say a factory must not start processes or timers, so
+// calling it is expected to be side-effect free; an extension that violates that is broken anyway.
+const factoryStub = new Proxy(
+  {
+    events: { on: () => () => {}, emit: () => {} },
+    getFlag: () => undefined,
+    registerFlag: () => undefined,
+  },
+  { get: (target, prop) => (prop in target ? target[prop] : () => undefined) },
+);
+
 for (const f of files) {
   try {
-    jiti(f);
+    const loaded = jiti(f);
+    const factory = typeof loaded === "function" ? loaded : loaded && loaded.default;
+    if (typeof factory === "function") factory(factoryStub);
   } catch (err) {
     const msg = String((err && err.message) || err).split("\n")[0];
     if (/parse|syntax|unexpected token/i.test(msg)) {

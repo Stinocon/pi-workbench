@@ -77,6 +77,10 @@ function blockedIPv6(addr: string): boolean {
   if (/^fe[89ab]/.test(n)) return true; // fe80::/10 link-local
   const v4 = embeddedIPv4(n);
   if (v4) return blockedIPv4(v4);
+  // A prefixed form (`::`, `::ffff:`, `64:ff9b::`) that did NOT decode to an embedded IPv4 is not an
+  // ordinary global address — legitimate global unicast never starts with `::`. Refusing it keeps an
+  // unvalidated form from being read as public (found by review: `::ffff:0:7f00:1`).
+  if (n.startsWith("::") || n.startsWith("64:ff9b:")) return true;
   return false;
 }
 
@@ -189,7 +193,9 @@ function requestPinned(target: Pinned, maxBytes: number): Promise<PinnedResponse
 					accept: "text/html,text/plain,*/*",
 					"accept-encoding": "gzip, deflate, br",
 				},
-				...(isHttps ? { servername: hostname } : {}),
+				// Only for a NAME: setting the TLS ServerName to an IP literal is rejected by Node
+				// (ERR_INVALID_ARG_VALUE), which refused every HTTPS URL written with an IP.
+				...(isHttps && isIP(hostname) === 0 ? { servername: hostname } : {}),
 				lookup: pinnedLookup(target.addresses),
 				signal: AbortSignal.timeout(15000),
 			},
@@ -315,7 +321,7 @@ function cleanDdgUrl(href: string): string {
 // Exported for the regression test: the pin is only observable by driving a request whose NAME does
 // not resolve to the address it is pinned to, and that needs the functions directly. Exporting them
 // is cheaper than trusting a comment that says the connection is pinned.
-export { blockedIPv4, blockedIPv6, requestPinned, validateUrl };
+export { blockedIPv4, blockedIPv6, fetchGuarded, requestPinned, validateUrl };
 
 export default function (pi: ExtensionAPI) {
   pi.registerTool({

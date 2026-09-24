@@ -49,6 +49,10 @@ SCALAR_KEYS = (
     "mutable", "verify", "verify_anchor", "verify_command",
     "created", "validated_at", "supersedes",
 )
+# Never coerced to bool/int: these hold COMMANDS and SEARCH STRINGS, and `verify_command: true`
+# becoming the boolean `True` made subprocess choke ("'bool' object is not iterable") — a false FAIL
+# on a decision whose evidence was fine. A shell command is a string even when it looks like a number.
+NO_COERCE = ("verify_command", "verify_anchor")
 # The HEAVY store holds only these types. Facts/preferences/workflows/hypotheses/todos
 # belong to the LIGHT tier (free-text MEMORY.md / PROJECT-MEMORY.md), not here.
 VALID_TYPES = {"decision", "invariant", "constraint"}
@@ -77,6 +81,10 @@ def parse_frontmatter(text: str) -> dict:
                 if item:
                     evidence.append(item)
                 continue
+            # A blank line inside the list is cosmetic. Ending the list on it silently DROPPED every
+            # path after it — a false FAIL on evidence that was there.
+            if line.strip() == "":
+                continue
             in_evidence = False  # evidence list ended; fall through to scalar parse
         if line.strip() == "":
             continue
@@ -88,6 +96,8 @@ def parse_frontmatter(text: str) -> dict:
                     val = val[1:-1]
                 if val in ("null", "~", ""):
                     val = None
+                elif key in NO_COERCE:
+                    val = val
                 else:
                     val = _coerce(val)
                 out[key] = val
@@ -138,6 +148,18 @@ def base_for_dir(d: Path) -> Path:
     return r.parent.parent
 
 
+# Anonymizer output must never be read as a decision. `DEC-0012.redacted.md` sorts AFTER
+# `DEC-0012.md`, and it carries the same `id`, so the loop below would keep the redacted copy and
+# shadow the real record — the verification would then assert a redacted document's anchors.
+# `decisions/.gitignore` keeps them out of git; this keeps them out of verification even when they
+# are on disk, which is the case the anon tool actually produces.
+IGNORED_DECISION_SUFFIXES = (".redacted", ".deanon")
+
+
+def _is_ignored(name: str) -> bool:
+    return any(f"{suffix}." in name for suffix in IGNORED_DECISION_SUFFIXES)
+
+
 def decision_files(dirs: list[Path]) -> dict[str, tuple[Path, Path]]:
     """Map decision id -> (file path, base). A file is a decision when it parses to an
     `id` and a `type` in VALID_TYPES."""
@@ -147,7 +169,7 @@ def decision_files(dirs: list[Path]) -> dict[str, tuple[Path, Path]]:
             continue
         base = base_for_dir(d)
         for f in sorted(d.glob("*.md")):
-            if f.name == "README.md":
+            if f.name == "README.md" or _is_ignored(f.name):
                 continue
             try:
                 fm = parse_frontmatter(f.read_text(encoding="utf-8"))
@@ -183,6 +205,15 @@ def verify_one(fm: dict, base: Path) -> dict:
         cmd = fm.get("verify_command")
         if not cmd:
             return {**result, "detail": "verify=auto but verify_command missing"}
+        if isinstance(cmd, str) and cmd.strip().lower() in ("true", "false"):
+            # Not coercing the value to a bool (an earlier fix) was only half the problem: the string
+            # "true" is a shell builtin, so the decision verified PASS while proving nothing.
+            return {
+                **result,
+                "ok": False,
+                "detail": f"verify_command is a bare YAML boolean ({cmd!r}), not a command — "
+                          "it proves nothing",
+            }
         try:
             proc = subprocess.run(
                 cmd, shell=True, cwd=str(base), capture_output=True, text=True, timeout=60,
@@ -205,7 +236,17 @@ def verify_one(fm: dict, base: Path) -> dict:
         return {**result, "detail": "verify=read but no evidence paths"}
     anchor = fm.get("verify_anchor")
     missing = []
-    matched = anchor is None  # no anchor -> existence is enough
+    if anchor is None:
+        # `verify: read` means "a human confirms this by reading the evidence". Without an anchor
+        # there is nothing to confirm: the path existing says only that the file was not deleted,
+        # and its CONTENT can change while the check still reports PASS. Fail with what to add rather
+        # than passing on a weaker condition than the decision asked for.
+        return {
+            **result,
+            "detail": "verify=read with no verify_anchor: nothing to confirm — add the string the "
+                      "evidence must contain",
+        }
+    matched = False
     for rel in evidence:
         p = Path(rel)
         cand = p if p.is_absolute() else base / p
